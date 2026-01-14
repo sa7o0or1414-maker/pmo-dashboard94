@@ -28,14 +28,16 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 EXCEL_PATH = DATA_DIR / "data.xlsx"
 
-# ================= CSS (Sidebar نظيف بدون نصوص عائمة) =================
+# ================= CSS =================
 st.markdown("""
 <style>
 html, body, [class*="css"] {
     direction: rtl;
     font-family: 'Segoe UI', sans-serif;
 }
-h1,h2,h3,p,label { text-align:center !important; }
+h1,h2,h3,p,label {
+    text-align:center !important;
+}
 
 /* ===== Sidebar ===== */
 section[data-testid="stSidebar"] {
@@ -52,7 +54,7 @@ section[data-testid="stSidebar"] * {
     text-align: center !important;
 }
 
-/* زر = عنصر واحد فقط */
+/* Sidebar buttons */
 section[data-testid="stSidebar"] .stButton {
     display: flex;
     justify-content: center;
@@ -124,7 +126,7 @@ def load_data():
 
     return df
 
-# ================= Sidebar (بدون أي نص زائد) =================
+# ================= Sidebar =================
 with st.sidebar:
     st.markdown("## PMO")
     st.markdown("مكتب إدارة المشاريع")
@@ -144,8 +146,6 @@ with st.sidebar:
             st.session_state.role = "viewer"
             st.session_state.page = "home"
             st.rerun()
-
-    st.markdown("<br><br>", unsafe_allow_html=True)
 
 # ================= Login =================
 if st.session_state.page == "login":
@@ -214,33 +214,36 @@ if st.session_state.page == "home":
     k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{filtered['نسبة الصرف'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
     k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{filtered['نسبة الإنجاز'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
 
-    # ===== Charts (شارتين جنب بعض) =====
+    # ===== Charts (منسقة ومتوازنة) =====
     c1, c2 = st.columns(2)
 
     with c1:
-        st.subheader("حالة المشاريع")
-        status_counts = filtered["حالة المشروع"].value_counts()
-        st.bar_chart(status_counts)
+        st.subheader("قيمة العقود حسب الجهة")
+        contracts_by_entity = (
+            filtered.groupby("الجهة", as_index=False)["قيمة العقد"]
+            .sum()
+            .sort_values("قيمة العقد", ascending=False)
+        )
+        st.bar_chart(contracts_by_entity.set_index("الجهة"), use_container_width=True)
 
     with c2:
-        st.subheader("قيمة العقود حسب الجهة")
-        st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum())
+        st.subheader("حالة المشاريع")
+        status_counts = (
+            filtered["حالة المشروع"]
+            .value_counts()
+            .reset_index()
+            .rename(columns={"index": "الحالة", "حالة المشروع": "عدد المشاريع"})
+            .sort_values("عدد المشاريع", ascending=False)
+        )
+        st.bar_chart(status_counts.set_index("الحالة"), use_container_width=True)
 
-    # ===== Delay Analysis =====
-    today = pd.Timestamp.today()
-    overdue = filtered[(filtered["تاريخ الانتهاء"] < today) & (~filtered["حالة المشروع"].isin(["مكتمل","منجز"]))]
-
-    risk = filtered[(filtered["تاريخ الانتهاء"] <= today + timedelta(days=30)) & (filtered["نسبة الإنجاز"] < 70)].copy()
-    risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
-
-    b1,b2 = st.columns(2)
-    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
-        st.session_state.show_overdue = not st.session_state.show_overdue
-    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
-        st.session_state.show_risk = not st.session_state.show_risk
-
-    if st.session_state.show_overdue:
-        st.dataframe(overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]], use_container_width=True)
-
-    if st.session_state.show_risk:
-        st.dataframe(risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","نسبة الإنجاز","سبب التوقع"]], use_container_width=True)
+    # ===== شارت إضافي =====
+    st.subheader("عدد المشاريع حسب البلدية")
+    municipality_counts = (
+        filtered["البلدية"]
+        .value_counts()
+        .reset_index()
+        .rename(columns={"index": "البلدية", "البلدية": "عدد المشاريع"})
+        .sort_values("عدد المشاريع", ascending=False)
+    )
+    st.bar_chart(municipality_counts.set_index("البلدية"), use_container_width=True)
