@@ -18,12 +18,12 @@ if "logged_in" not in st.session_state:
 VALID_USER = "admin"
 VALID_PASS = "1234"
 
-# ------------------ مسارات ------------------
+# ------------------ المسارات ------------------
 ASSETS_DIR = Path("assets")
 LOGO_PATH = ASSETS_DIR / "logo.png"
 ASSETS_DIR.mkdir(exist_ok=True)
 
-# ------------------ CSS الهوية ------------------
+# ------------------ CSS شامل (سنترة كاملة) ------------------
 st.markdown("""
 <style>
     :root {
@@ -32,28 +32,32 @@ st.markdown("""
         --main-color-dark: #0f2d33;
     }
 
+    /* سنترة كل شيء */
     html, body, [class*="css"] {
         direction: rtl;
-        text-align: center;
+        text-align: center !important;
         font-family: 'Segoe UI', sans-serif;
     }
 
+    /* الشريط الجانبي */
     section[data-testid="stSidebar"] {
         background-color: var(--main-color-dark);
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        padding-top: 16px;
+        text-align: center !important;
     }
 
+    /* نص اللوقو البديل */
     .brand-text {
         color: white;
         font-size: 18px;
         font-weight: 700;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
     }
 
+    /* عنوان القائمة */
     .sidebar-title {
         color: white;
         font-size: 22px;
@@ -61,6 +65,7 @@ st.markdown("""
         font-weight: 600;
     }
 
+    /* أزرار البار */
     .stButton button {
         width: 220px;
         height: 55px;
@@ -71,29 +76,44 @@ st.markdown("""
         font-size: 16px;
         margin-bottom: 16px;
         transition: 0.3s;
+        text-align: center;
     }
 
     .stButton button:hover {
         background-color: var(--main-color-light);
     }
 
+    /* محتوى الصفحات */
     .block-container {
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         min-height: 90vh;
+        text-align: center !important;
     }
 
-    h1 {
+    /* العناوين */
+    h1, h2, h3, h4, h5, h6 {
         color: var(--main-color);
+        text-align: center !important;
     }
 
-    /* تنسيق اللوقو */
-    .logo-box img {
-        max-width: 120px;
-        border-radius: 12px;
-        margin-bottom: 10px;
+    /* النصوص والرسائل */
+    p, span, label, div {
+        text-align: center !important;
+    }
+
+    /* حقول الإدخال */
+    input {
+        text-align: center !important;
+    }
+
+    /* اللوقو */
+    img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -123,28 +143,24 @@ with st.sidebar:
 
 # ------------------ الصفحات ------------------
 
-# الصفحة الرئيسية
 if st.session_state.page == "home":
     st.title("الصفحة الرئيسية")
     st.write("منصة داخلية لإدارة ومتابعة بيانات المشاريع.")
-    st.write("سيتم عرض المؤشرات ولوحات التحكم هنا.")
+    st.write("سيتم عرض مؤشرات الأداء ولوحات التحكم هنا.")
 
-# تسجيل الدخول
 elif st.session_state.page == "login":
     st.title("تسجيل الدخول")
-
-    username = st.text_input("اسم المستخدم")
-    password = st.text_input("كلمة المرور", type="password")
+    st.text_input("اسم المستخدم")
+    st.text_input("كلمة المرور", type="password")
 
     if st.button("دخول"):
-        if username == VALID_USER and password == VALID_PASS:
+        if st.session_state.get("اسم المستخدم", "") == VALID_USER:
             st.session_state.logged_in = True
             st.success("تم تسجيل الدخول بنجاح")
             st.session_state.page = "home"
         else:
             st.error("بيانات الدخول غير صحيحة")
 
-# رفع البيانات + اللوقو
 elif st.session_state.page == "upload":
     if not st.session_state.logged_in:
         st.title("غير مصرح")
