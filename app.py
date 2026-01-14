@@ -28,7 +28,7 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 EXCEL_PATH = DATA_DIR / "data.xlsx"
 
-# ================= CSS (تنظيف + إبداع) =================
+# ================= CSS (إصلاح نهائي للتصميم) =================
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -54,28 +54,51 @@ section[data-testid="stSidebar"] * {
     text-align: center !important;
 }
 
-/* Sidebar buttons */
+/* Sidebar buttons - سطر واحد فقط */
 section[data-testid="stSidebar"] .stButton button {
-    width: 75%;
+    width: 70%;
     margin: 14px auto;
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.10);
     border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.15);
-    height: 48px;
-    font-size: 15px;
+    border: 1px solid rgba(255,255,255,0.2);
+    height: 46px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    line-height: 1;
 }
 section[data-testid="stSidebar"] .stButton button:hover {
-    background: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.22);
 }
 
 /* ===== Cards ===== */
 .card {
     background: #ffffff;
-    padding: 22px;
+    padding: 18px;
     border-radius: 18px;
     box-shadow: 0 10px 28px rgba(0,0,0,0.08);
     text-align: center;
 }
+
+/* عنوان الكارد */
+.card span {
+    font-size: 13px;
+    color: #6c757d;
+}
+
+/* رقم الكارد (لا ينزل سطر) */
+.card h2 {
+    font-size: 22px;
+    margin: 6px 0 0 0;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
 .card.blue { border-top: 4px solid #2c7be5; }
 .card.green { border-top: 4px solid #00a389; }
 .card.orange { border-top: 4px solid #f4a261; }
@@ -134,7 +157,7 @@ with st.sidebar:
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.caption("لوحة تحكم PMO")
 
-# ================= صفحة تسجيل الدخول =================
+# ================= Login =================
 if st.session_state.page == "login":
     st.title("تسجيل دخول المسؤول")
     u = st.text_input("اسم المستخدم")
@@ -148,7 +171,7 @@ if st.session_state.page == "login":
         else:
             st.error("بيانات الدخول غير صحيحة")
 
-# ================= رفع البيانات =================
+# ================= Upload =================
 if st.session_state.page == "upload":
     st.title("رفع البيانات")
     file = st.file_uploader("رفع ملف Excel", type=["xlsx"])
@@ -159,7 +182,7 @@ if st.session_state.page == "upload":
         st.session_state.page = "home"
         st.rerun()
 
-# ================= الصفحة الرئيسية =================
+# ================= Home =================
 if st.session_state.page == "home":
     st.title("لوحة التحكم")
 
@@ -168,23 +191,21 @@ if st.session_state.page == "home":
         st.warning("ارفع ملف Excel لعرض لوحة التحكم")
         st.stop()
 
-    # ===== الفلاتر (بدون مستطيل خلفية) =====
+    # ===== Filters =====
     st.markdown("<div class='filter-row'>", unsafe_allow_html=True)
-
     f1,f2,f3 = st.columns(3)
+    f4,f5 = st.columns(2)
+
     with f1:
         cat = st.selectbox("التصنيف", ["الكل"] + sorted(df["التصنيف"].dropna().unique()))
     with f2:
         ent = st.selectbox("الجهة", ["الكل"] + sorted(df["الجهة"].dropna().unique()))
     with f3:
         mun = st.selectbox("البلدية", ["الكل"] + sorted(df["البلدية"].dropna().unique()))
-
-    f4,f5 = st.columns(2)
     with f4:
         status = st.selectbox("حالة المشروع", ["الكل"] + sorted(df["حالة المشروع"].dropna().unique()))
     with f5:
         ctype = st.selectbox("نوع العقد", ["الكل"] + sorted(df["نوع العقد"].dropna().unique()))
-
     st.markdown("</div>", unsafe_allow_html=True)
 
     filtered = df.copy()
@@ -194,16 +215,17 @@ if st.session_state.page == "home":
     if status != "الكل": filtered = filtered[filtered["حالة المشروع"] == status]
     if ctype != "الكل": filtered = filtered[filtered["نوع العقد"] == ctype]
 
-    # ===== KPI =====
+    # ===== KPI Cards =====
     k1,k2,k3,k4,k5,k6 = st.columns(6)
-    k1.markdown(f"<div class='card blue'>عدد المشاريع<br><h2>{len(filtered)}</h2></div>", unsafe_allow_html=True)
-    k2.markdown(f"<div class='card green'>قيمة العقود<br><h2>{filtered['قيمة العقد'].sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k3.markdown(f"<div class='card gray'>المستخلصات<br><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k4.markdown(f"<div class='card orange'>المتبقي<br><h2>{filtered['المتبقي من المستخلص'].sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k5.markdown(f"<div class='card blue'>متوسط الصرف<br><h2>{filtered['نسبة الصرف'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
-    k6.markdown(f"<div class='card green'>متوسط الإنجاز<br><h2>{filtered['نسبة الإنجاز'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
 
-    # ===== الشارتات =====
+    k1.markdown(f"<div class='card blue'><span>عدد المشاريع</span><h2>{len(filtered)}</h2></div>", unsafe_allow_html=True)
+    k2.markdown(f"<div class='card green'><span>قيمة العقود</span><h2>{filtered['قيمة العقد'].sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k3.markdown(f"<div class='card gray'><span>المستخلصات</span><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k4.markdown(f"<div class='card orange'><span>المتبقي</span><h2>{filtered['المتبقي من المستخلص'].sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{filtered['نسبة الصرف'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
+    k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{filtered['نسبة الإنجاز'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
+
+    # ===== Charts =====
     c1,c2 = st.columns(2)
     with c1:
         st.subheader("عدد المشاريع حسب الحالة")
@@ -212,14 +234,11 @@ if st.session_state.page == "home":
         st.subheader("قيمة العقود حسب الجهة")
         st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum())
 
-    # ===== تحليل التأخير =====
+    # ===== Delay Analysis =====
     today = pd.Timestamp.today()
     overdue = filtered[(filtered["تاريخ الانتهاء"] < today) & (~filtered["حالة المشروع"].isin(["مكتمل","منجز"]))]
 
-    risk = filtered[
-        (filtered["تاريخ الانتهاء"] <= today + timedelta(days=30)) &
-        (filtered["نسبة الإنجاز"] < 70)
-    ].copy()
+    risk = filtered[(filtered["تاريخ الانتهاء"] <= today + timedelta(days=30)) & (filtered["نسبة الإنجاز"] < 70)].copy()
     risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
 
     b1,b2 = st.columns(2)
