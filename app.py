@@ -218,7 +218,7 @@ if st.session_state.page == "home":
 
     with f2:
         if "الجهة" in filtered.columns:
-            ent = st.selectbox("الجهة", ["الكل"] + sorted(filtered["الجهة"].dropna().unique()))
+            ent = st.selectbox("الجهة", ["الكل"] + sorted(filtered["الجهة الرسمية"].dropna().unique()))
             if ent!="الكل": filtered = filtered[filtered["الجهة"]==ent]
 
     with f3:
@@ -243,7 +243,9 @@ if st.session_state.page == "home":
         chart = alt.Chart(sdf).mark_bar().encode(
             x=alt.X("عدد:Q"),
             y=alt.Y("الحالة:N", sort="-x"),
-            color=alt.Color("الحالة:N", scale=alt.Scale(domain=sdf["الحالة"].tolist(), range=sdf["لون"].tolist())),
+            color=alt.Color("الحالة:N",
+                scale=alt.Scale(domain=sdf["الحالة"].tolist(), range=sdf["لون"].tolist())
+            ),
             tooltip=["الحالة","عدد"]
         ).properties(height=260)
         st.altair_chart(chart, use_container_width=True)
@@ -257,9 +259,37 @@ if st.session_state.page == "home":
         st.subheader("قيمة العقود حسب الجهة")
         st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum())
 
+    # ===== المشاريع المتأخرة والمتوقع تأخرها =====
+    st.markdown("### تنبيهات المشاريع")
+
+    overdue = pd.DataFrame()
+    if "حالة المشروع" in filtered.columns:
+        overdue = filtered[
+            filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", regex=True)
+        ]
+
+    risk = pd.DataFrame()
+    if "تاريخ الانتهاء" in filtered.columns and "نسبة الإنجاز" in filtered.columns:
+        risk = filtered[
+            (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
+            (filtered["نسبة الإنجاز"] < 70)
+        ].copy()
+        if not risk.empty:
+            risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
+
+    b1,b2 = st.columns(2)
+    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
+        st.session_state.show_overdue = not st.session_state.show_overdue
+    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
+        st.session_state.show_risk = not st.session_state.show_risk
+
+    if st.session_state.show_overdue and not overdue.empty:
+        st.dataframe(overdue, use_container_width=True)
+
+    if st.session_state.show_risk and not risk.empty:
+        st.dataframe(risk, use_container_width=True)
+
     # ===== جدول تفصيلي =====
     st.markdown("---")
     st.subheader("تفاصيل المشاريع")
-    cols = ["اسم المشروع","الجهة","البلدية","المقاول","حالة المشروع","تاريخ الانتهاء","قيمة العقد"]
-    cols = [c for c in cols if c in filtered.columns]
-    st.dataframe(filtered[cols], use_container_width=True)
+    st.dataframe(filtered, use_container_width=True)
