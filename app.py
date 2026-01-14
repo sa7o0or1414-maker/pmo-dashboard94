@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-from datetime import date
 
 # ---------------- إعدادات الصفحة ----------------
 st.set_page_config(page_title="منصة PMO", layout="wide")
@@ -16,7 +15,7 @@ if "role" not in st.session_state:
 ADMIN_USER = "admin"
 ADMIN_PASS = "1234"
 
-# ---------------- المسارات الثابتة ----------------
+# ---------------- المسارات ----------------
 BASE_DIR = Path(".")
 DATA_DIR = BASE_DIR / "data"
 ASSETS_DIR = BASE_DIR / "assets"
@@ -26,19 +25,26 @@ ASSETS_DIR.mkdir(exist_ok=True)
 EXCEL_PATH = DATA_DIR / "data.xlsx"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 
-# ---------------- CSS (مختصر – يحافظ على تنسيقك) ----------------
+# ---------------- CSS مختصر ----------------
 st.markdown("""
 <style>
-html,body,[class*="css"]{direction:rtl;text-align:center;font-family:'Segoe UI'}
+html,body,[class*="css"]{
+direction:rtl;text-align:center;font-family:'Segoe UI'
+}
 section[data-testid="stSidebar"]{
-background:#0f2d33;display:flex;flex-direction:column;align-items:center;justify-content:center
+background:#0f2d33;
+display:flex;flex-direction:column;
+justify-content:center;align-items:center
 }
 .stButton button{
 width:230px;height:56px;border-radius:16px;
-background:#153e46;color:white;border:none;font-size:16px;margin-bottom:14px
+background:#153e46;color:white;border:none;
+font-size:16px;margin-bottom:14px
 }
 .block-container{
-display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90vh
+display:flex;flex-direction:column;
+justify-content:center;align-items:center;
+min-height:90vh
 }
 .card{
 background:white;padding:22px;border-radius:18px;
@@ -47,21 +53,20 @@ box-shadow:0 8px 25px rgba(0,0,0,.08);width:100%
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- تحميل البيانات (دائم من الملف) ----------------
+# ---------------- دالة قراءة البيانات ----------------
 def load_data():
-    if EXCEL_PATH.exists():
-        try:
-            xls = pd.ExcelFile(EXCEL_PATH)
-            sheet = "Data" if "Data" in xls.sheet_names else xls.sheet_names[0]
-            df = pd.read_excel(EXCEL_PATH, sheet_name=sheet)
-            df.columns = [str(c).strip() for c in df.columns]
-            return df
-        except Exception as e:
-            st.error(f"خطأ في قراءة الملف: {e}")
-            return None
-    return None
+    if not EXCEL_PATH.exists():
+        return None
 
-df = load_data()
+    try:
+        xls = pd.ExcelFile(EXCEL_PATH)
+        sheet = "Data" if "Data" in xls.sheet_names else xls.sheet_names[0]
+        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet)
+        df.columns = [str(c).strip() for c in df.columns]
+        return df
+    except Exception as e:
+        st.error(f"خطأ في قراءة ملف Excel: {e}")
+        return None
 
 # ---------------- Sidebar ----------------
 with st.sidebar:
@@ -102,7 +107,7 @@ if st.session_state.page == "login":
         else:
             st.error("بيانات الدخول غير صحيحة")
 
-# ---------------- رفع البيانات (Admin فقط) ----------------
+# ---------------- رفع البيانات ----------------
 if st.session_state.page == "upload":
     if st.session_state.role != "admin":
         st.warning("غير مصرح لك بالوصول")
@@ -114,9 +119,9 @@ if st.session_state.page == "upload":
             with open(EXCEL_PATH, "wb") as f:
                 f.write(excel.getbuffer())
 
-            st.success("تم رفع الملف وتحليله بنجاح")
+            st.success("تم رفع الملف بنجاح")
             st.session_state.page = "home"
-            st.rerun()   # 🔴 هذا هو المفتاح
+            st.rerun()  # 🔴 المفتاح
 
         st.divider()
 
@@ -131,10 +136,12 @@ if st.session_state.page == "upload":
 if st.session_state.page == "home":
     st.title("لوحة التحكم")
 
+    df = load_data()   # 🔴 القراءة هنا فقط
+
     if df is None:
         st.warning("لا توجد بيانات بعد. ارفع ملف Excel من صفحة رفع البيانات.")
     else:
-        st.success("تم تحميل البيانات بنجاح ✔")
+        st.success("تم تحميل البيانات بنجاح")
 
         col1, col2, col3 = st.columns(3)
 
@@ -150,9 +157,9 @@ if st.session_state.page == "home":
                 unsafe_allow_html=True)
 
         with col3:
-            avg_progress = pd.to_numeric(df.get("نسبة الصرف", 0), errors="coerce").mean()
+            avg_spend = pd.to_numeric(df.get("نسبة الصرف", 0), errors="coerce").mean()
             st.markdown(
-                f"<div class='card'>متوسط نسبة الصرف<br><h2>{avg_progress:.1f}%</h2></div>",
+                f"<div class='card'>متوسط نسبة الصرف<br><h2>{avg_spend:.1f}%</h2></div>",
                 unsafe_allow_html=True)
 
         st.divider()
