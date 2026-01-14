@@ -10,7 +10,7 @@ st.set_page_config(
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
-# CSS الهوية البصرية + الاتجاه
+# CSS التنسيق والهوية
 st.markdown("""
 <style>
     :root {
@@ -21,34 +21,38 @@ st.markdown("""
 
     html, body, [class*="css"] {
         direction: rtl;
-        text-align: right;
+        text-align: center;
         font-family: 'Segoe UI', sans-serif;
     }
 
     /* الشريط الجانبي */
     section[data-testid="stSidebar"] {
         background-color: var(--main-color-dark);
-        padding-top: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
 
     /* عنوان القائمة */
     .sidebar-title {
         color: white;
-        font-size: 20px;
-        margin-bottom: 20px;
+        font-size: 22px;
+        margin-bottom: 30px;
         font-weight: 600;
+        text-align: center;
     }
 
     /* أزرار القائمة */
     .stButton button {
-        width: 100%;
+        width: 220px;
         height: 55px;
         background-color: var(--main-color);
         color: white;
         border: none;
-        border-radius: 12px;
+        border-radius: 14px;
         font-size: 16px;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
         transition: 0.3s;
     }
 
@@ -57,14 +61,25 @@ st.markdown("""
         color: white;
     }
 
-    /* العناوين */
-    h1, h2, h3 {
-        color: var(--main-color);
+    /* محتوى الصفحة */
+    .block-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 90vh;
     }
 
-    /* البطاقات */
-    .block-container {
-        padding-top: 2rem;
+    /* العناوين */
+    h1 {
+        color: var(--main-color);
+        text-align: center;
+    }
+
+    /* النصوص */
+    p {
+        text-align: center;
+        font-size: 16px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -86,15 +101,15 @@ with st.sidebar:
 if st.session_state.page == "home":
     st.title("الصفحة الرئيسية")
     st.write("مرحبًا بك في منصة إدارة المشاريع.")
-    st.info("سيتم هنا عرض مؤشرات الأداء ولوحات المتابعة.")
+    st.write("سيتم هنا عرض مؤشرات الأداء ولوحات المتابعة.")
 
 elif st.session_state.page == "upload":
     st.title("رفع البيانات")
     st.write("هذه الصفحة مخصصة لرفع ملفات البيانات.")
-    st.warning("هذه الصفحة ستتطلب تسجيل دخول لاحقًا.")
+    st.write("ستتطلب هذه الصفحة تسجيل دخول لاحقًا.")
 
 elif st.session_state.page == "login":
     st.title("تسجيل الدخول")
-    username = st.text_input("اسم المستخدم")
-    password = st.text_input("كلمة المرور", type="password")
+    st.text_input("اسم المستخدم")
+    st.text_input("كلمة المرور", type="password")
     st.button("دخول")
