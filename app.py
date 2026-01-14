@@ -226,26 +226,71 @@ if st.session_state.page == "home":
         st.stop()
 
     # ===== Filters =====
-    f1,f2,f3 = st.columns(3)
-    f4,f5 = st.columns(2)
+    # ===== Cascading Filters (مترابطة) =====
+filtered = df.copy()
 
-    with f1:
-        cat = st.selectbox("التصنيف", ["الكل"] + sorted(df["التصنيف"].dropna().unique())) if "التصنيف" in df.columns else "الكل"
-    with f2:
-        ent = st.selectbox("الجهة", ["الكل"] + sorted(df["الجهة"].dropna().unique())) if "الجهة" in df.columns else "الكل"
-    with f3:
-        mun = st.selectbox("البلدية", ["الكل"] + sorted(df["البلدية"].dropna().unique())) if "البلدية" in df.columns else "الكل"
-    with f4:
-        status = st.selectbox("حالة المشروع", ["الكل"] + sorted(df["حالة المشروع"].dropna().unique())) if "حالة المشروع" in df.columns else "الكل"
-    with f5:
-        ctype = st.selectbox("نوع العقد", ["الكل"] + sorted(df["نوع العقد"].dropna().unique())) if "نوع العقد" in df.columns else "الكل"
+f1, f2, f3 = st.columns(3)
+f4, f5 = st.columns(2)
 
-    filtered = df.copy()
-    if "التصنيف" in filtered.columns and cat!="الكل": filtered = filtered[filtered["التصنيف"]==cat]
-    if "الجهة" in filtered.columns and ent!="الكل": filtered = filtered[filtered["الجهة"]==ent]
-    if "البلدية" in filtered.columns and mun!="الكل": filtered = filtered[filtered["البلدية"]==mun]
-    if "حالة المشروع" in filtered.columns and status!="الكل": filtered = filtered[filtered["حالة المشروع"]==status]
-    if "نوع العقد" in filtered.columns and ctype!="الكل": filtered = filtered[filtered["نوع العقد"]==ctype]
+# حالة المشروع أولاً (أكثر تأثيرًا)
+with f4:
+    if "حالة المشروع" in filtered.columns:
+        status = st.selectbox(
+            "حالة المشروع",
+            ["الكل"] + sorted(filtered["حالة المشروع"].dropna().astype(str).unique())
+        )
+        if status != "الكل":
+            filtered = filtered[filtered["حالة المشروع"] == status]
+    else:
+        status = "الكل"
+
+# نوع العقد
+with f5:
+    if "نوع العقد" in filtered.columns:
+        ctype = st.selectbox(
+            "نوع العقد",
+            ["الكل"] + sorted(filtered["نوع العقد"].dropna().astype(str).unique())
+        )
+        if ctype != "الكل":
+            filtered = filtered[filtered["نوع العقد"] == ctype]
+    else:
+        ctype = "الكل"
+
+# التصنيف
+with f1:
+    if "التصنيف" in filtered.columns:
+        cat = st.selectbox(
+            "التصنيف",
+            ["الكل"] + sorted(filtered["التصنيف"].dropna().astype(str).unique())
+        )
+        if cat != "الكل":
+            filtered = filtered[filtered["التصنيف"] == cat]
+    else:
+        cat = "الكل"
+
+# الجهة
+with f2:
+    if "الجهة" in filtered.columns:
+        ent = st.selectbox(
+            "الجهة",
+            ["الكل"] + sorted(filtered["الجهة"].dropna().astype(str).unique())
+        )
+        if ent != "الكل":
+            filtered = filtered[filtered["الجهة"] == ent]
+    else:
+        ent = "الكل"
+
+# البلدية
+with f3:
+    if "البلدية" in filtered.columns:
+        mun = st.selectbox(
+            "البلدية",
+            ["الكل"] + sorted(filtered["البلدية"].dropna().astype(str).unique())
+        )
+        if mun != "الكل":
+            filtered = filtered[filtered["البلدية"] == mun]
+    else:
+        mun = "الكل"
 
     # ===== KPI =====
     k1,k2,k3,k4,k5,k6 = st.columns(6)
