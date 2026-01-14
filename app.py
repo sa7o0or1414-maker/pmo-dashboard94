@@ -9,20 +9,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ================== CSS (Desktop + Mobile) ==================
+# ================== CSS ==================
 st.markdown("""
 <style>
 
-/* إخفاء هيدر Streamlit */
+/* إخفاء الهيدر */
 header {visibility: hidden;}
 
-/* ================= Desktop ================= */
+/* ================= Sidebar ================= */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f2d33, #153e46);
-    display: flex;
-    flex-direction: column;
+    width: 260px;
 }
 
+/* محتوى البار */
 section[data-testid="stSidebar"] > div {
     display: flex;
     flex-direction: column;
@@ -32,76 +32,48 @@ section[data-testid="stSidebar"] > div {
 }
 
 /* أزرار البار */
-section[data-testid="stSidebar"] .stButton {
-    display: flex;
-    justify-content: center;
-}
-
 section[data-testid="stSidebar"] .stButton > button {
-    padding: 12px 28px;
+    width: 180px;
+    padding: 12px 0;
     margin: 12px 0;
-    background: rgba(255,255,255,0.14);
-    border-radius: 18px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
     border: none;
     font-size: 14px;
-    font-weight: 500;
     white-space: nowrap;
     color: white;
     box-shadow: 0 6px 18px rgba(0,0,0,0.18);
 }
 
 section[data-testid="stSidebar"] .stButton > button:hover {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.28);
     transform: scale(1.03);
 }
 
-/* عنوان الصفحة */
+/* ================= Main ================= */
 .main-title {
     text-align: center;
-    font-size: 34px;
+    font-size: 36px;
     font-weight: 700;
     color: #153e46;
-    margin: 20px 0;
+    margin-top: 20px;
 }
 
 /* ================= Mobile ================= */
 @media (max-width: 768px) {
 
-    /* Sidebar يصير Top Bar */
     section[data-testid="stSidebar"] {
-        width: 100% !important;
-        height: auto !important;
+        width: 200px;
     }
 
-    section[data-testid="stSidebar"] > div {
-        flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
-        height: auto;
+    section[data-testid="stSidebar"] .stButton > button {
+        width: 150px;
+        font-size: 12px;
         padding: 10px 0;
     }
 
-    /* تصغير اللوقو */
-    section[data-testid="stSidebar"] img {
-        width: 70px;
-    }
-
-    /* أزرار الجوال */
-    section[data-testid="stSidebar"] .stButton > button {
-        padding: 8px 14px;
-        margin: 4px;
-        font-size: 12px;
-        border-radius: 14px;
-    }
-
-    /* عنوان الصفحة */
     .main-title {
-        font-size: 24px;
-    }
-
-    /* الكروت */
-    .stMetric {
-        text-align: center;
+        font-size: 26px;
     }
 }
 </style>
@@ -116,35 +88,33 @@ def img64(path):
 
 # ================== Sidebar ==================
 with st.sidebar:
-    LOGO_PATH = "logo.png"  # ترفعينه لاحقًا من رفع البيانات
+    LOGO_PATH = "logo.png"
 
     if Path(LOGO_PATH).exists():
         st.markdown(
-            f"<img src='data:image/png;base64,{img64(LOGO_PATH)}'>",
+            f"<img src='data:image/png;base64,{img64(LOGO_PATH)}' width='110'>",
             unsafe_allow_html=True
         )
+
+    st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
     st.button("الصفحة الرئيسية")
     st.button("رفع البيانات")
     st.button("تسجيل خروج")
 
-# ================== محتوى الصفحة ==================
+# ================== المحتوى ==================
 st.markdown("<div class='main-title'>لوحة التحكم</div>", unsafe_allow_html=True)
 
 st.markdown(
-    """
-    <div style='text-align:center; margin-top:20px; color:#555;'>
-        الداشبورد جاهز — متوافق مع الجوال والديسكتوب
-    </div>
-    """,
+    "<p style='text-align:center;color:#666;'>الداشبورد متوافق مع الديسكتوب والجوال</p>",
     unsafe_allow_html=True
 )
 
-# ===== مثال كروت (مكانها محفوظ للكود القديم) =====
-col1, col2, col3 = st.columns(3)
-with col1:
+# ===== كروت (مكانها محفوظ للكود الحقيقي) =====
+c1, c2, c3 = st.columns(3)
+with c1:
     st.metric("عدد المشاريع", "—")
-with col2:
+with c2:
     st.metric("قيمة العقود", "—")
-with col3:
+with c3:
     st.metric("نسبة الإنجاز", "—")
