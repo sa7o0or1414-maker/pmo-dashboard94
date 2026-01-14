@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-import matplotlib.pyplot as plt
 
 # ================= إعدادات الصفحة =================
 st.set_page_config(page_title="منصة PMO", layout="wide")
@@ -13,8 +12,6 @@ if "role" not in st.session_state:
     st.session_state.role = "viewer"
 if "show_overdue" not in st.session_state:
     st.session_state.show_overdue = False
-if "show_risk" not in st.session_state:
-    st.session_state.show_risk = False
 
 # ================= بيانات المسؤول =================
 ADMIN_USER = "admin"
@@ -30,7 +27,7 @@ ASSETS_DIR.mkdir(exist_ok=True)
 EXCEL_PATH = DATA_DIR / "data.xlsx"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 
-# ================= CSS (Power BI Style + سنترة) =================
+# ================= CSS (سنترة + هوية PMO) =================
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -78,10 +75,15 @@ h1, h2, h3, p, label {
 def load_data():
     if not EXCEL_PATH.exists():
         return None
-    df = pd.read_excel(EXCEL_PATH, engine="openpyxl")
-    df.columns = [str(c).strip() for c in df.columns]
-    df["تاريخ الانتهاء"] = pd.to_datetime(df["تاريخ الانتهاء"], errors="coerce")
-    return df
+    try:
+        df = pd.read_excel(EXCEL_PATH, engine="openpyxl")
+        df.columns = [str(c).strip() for c in df.columns]
+        df["تاريخ الانتهاء"] = pd.to_datetime(df["تاريخ الانتهاء"], errors="coerce")
+        return df
+    except Exception as e:
+        st.error("تعذر قراءة ملف Excel")
+        st.code(str(e))
+        return None
 
 # ================= Sidebar =================
 with st.sidebar:
@@ -126,11 +128,11 @@ if st.session_state.page == "upload":
     if excel:
         with open(EXCEL_PATH, "wb") as f:
             f.write(excel.getbuffer())
-        st.success("تم رفع الملف")
+        st.success("تم رفع الملف بنجاح")
         st.session_state.page = "home"
         st.rerun()
 
-# ================= الصفحة الرئيسية (Dashboard كامل) =================
+# ================= الصفحة الرئيسية (Dashboard Power BI Style) =================
 if st.session_state.page == "home":
     st.title("لوحة التحكم")
 
@@ -139,16 +141,16 @@ if st.session_state.page == "home":
         st.warning("ارفع ملف Excel لعرض لوحة التحكم")
     else:
         # ---------- الفلاتر ----------
-        c1, c2, c3, c4, c5 = st.columns(5)
-        with c1:
+        f1, f2, f3, f4, f5 = st.columns(5)
+        with f1:
             cat = st.selectbox("التصنيف", ["الكل"] + sorted(df["التصنيف"].dropna().unique()))
-        with c2:
+        with f2:
             ent = st.selectbox("الجهة", ["الكل"] + sorted(df["الجهة"].dropna().unique()))
-        with c3:
+        with f3:
             mun = st.selectbox("البلدية", ["الكل"] + sorted(df["البلدية"].dropna().unique()))
-        with c4:
+        with f4:
             status = st.selectbox("حالة المشروع", ["الكل"] + sorted(df["حالة المشروع"].dropna().unique()))
-        with c5:
+        with f5:
             ctype = st.selectbox("نوع العقد", ["الكل"] + sorted(df["نوع العقد"].dropna().unique()))
 
         filtered = df.copy()
@@ -158,33 +160,40 @@ if st.session_state.page == "home":
         if status != "الكل": filtered = filtered[filtered["حالة المشروع"] == status]
         if ctype != "الكل": filtered = filtered[filtered["نوع العقد"] == ctype]
 
-        # ---------- KPI ----------
+        # ---------- KPI Cards ----------
         k1, k2, k3 = st.columns(3)
         with k1:
-            st.markdown(f"<div class='card'>عدد المشاريع<br><h2>{len(filtered)}</h2></div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div class='card'>عدد المشاريع<br><h2>{len(filtered)}</h2></div>",
+                unsafe_allow_html=True
+            )
         with k2:
-            total = pd.to_numeric(filtered["قيمة العقد"], errors="coerce").sum()
-            st.markdown(f"<div class='card'>إجمالي قيمة العقود<br><h2>{total:,.0f}</h2></div>", unsafe_allow_html=True)
+            total_contract = pd.to_numeric(filtered["قيمة العقد"], errors="coerce").sum()
+            st.markdown(
+                f"<div class='card'>إجمالي قيمة العقود<br><h2>{total_contract:,.0f}</h2></div>",
+                unsafe_allow_html=True
+            )
         with k3:
-            avg = pd.to_numeric(filtered["نسبة الصرف"], errors="coerce").mean()
-            st.markdown(f"<div class='card'>متوسط نسبة الصرف<br><h2>{avg:.1f}%</h2></div>", unsafe_allow_html=True)
+            avg_spend = pd.to_numeric(filtered["نسبة الصرف"], errors="coerce").mean()
+            st.markdown(
+                f"<div class='card'>متوسط نسبة الصرف<br><h2>{avg_spend:.1f}%</h2></div>",
+                unsafe_allow_html=True
+            )
 
         st.divider()
 
-        # ---------- الرسومات ----------
-        colA, colB = st.columns(2)
+        # ---------- الرسومات (بدون matplotlib) ----------
+        cA, cB = st.columns(2)
 
-        with colA:
+        with cA:
             st.subheader("عدد المشاريع حسب الحالة")
-            fig, ax = plt.subplots()
-            filtered["حالة المشروع"].value_counts().plot(kind="bar", ax=ax)
-            st.pyplot(fig)
+            status_counts = filtered["حالة المشروع"].value_counts()
+            st.bar_chart(status_counts)
 
-        with colB:
+        with cB:
             st.subheader("قيمة العقود حسب الجهة")
-            fig, ax = plt.subplots()
-            filtered.groupby("الجهة")["قيمة العقد"].sum().plot(kind="bar", ax=ax)
-            st.pyplot(fig)
+            contracts_by_entity = filtered.groupby("الجهة")["قيمة العقد"].sum()
+            st.bar_chart(contracts_by_entity)
 
         st.divider()
 
