@@ -225,7 +225,6 @@ if st.session_state.page == "home":
         st.warning("يرجى رفع ملف Excel من صفحة رفع البيانات")
         st.stop()
 
-    # ===== Filters =====
     # ===== Cascading Filters (مترابطة) =====
 filtered = df.copy()
 
