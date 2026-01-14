@@ -182,7 +182,20 @@ if ALTAIR_OK:
         use_container_width=True
     )
 
-# ================= تنبيهات =================
+# ================= الشارتين (اللي كانوا مختفين) =================
+c1, c2 = st.columns(2)
+
+with c1:
+    st.subheader("عدد المشاريع حسب البلدية")
+    if "البلدية" in filtered.columns:
+        st.bar_chart(filtered["البلدية"].value_counts(), use_container_width=True)
+
+with c2:
+    st.subheader("قيمة العقود حسب الجهة الرسمية")
+    if "الجهة" in filtered.columns:
+        st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum(), use_container_width=True)
+
+# ================= التنبيهات =================
 st.subheader("تنبيهات المشاريع")
 
 overdue = filtered[filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر")]
@@ -191,15 +204,15 @@ risk = filtered[
     (filtered["نسبة الإنجاز"] < 70)
 ]
 
-c1,c2 = st.columns(2)
-if c1.button(f"المشاريع المتأخرة ({len(overdue)})"):
+b1, b2 = st.columns(2)
+if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
     st.dataframe(overdue, use_container_width=True)
 
-if c2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
+if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
     risk = risk.assign(سبب="قرب تاريخ الانتهاء مع انخفاض الإنجاز")
     st.dataframe(risk, use_container_width=True)
 
-# ================= جدول =================
+# ================= الجدول =================
 st.markdown("---")
 st.subheader("تفاصيل المشاريع")
 st.dataframe(filtered, use_container_width=True)
