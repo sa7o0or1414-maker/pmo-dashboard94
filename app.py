@@ -55,36 +55,22 @@ html, body, [class*="css"] {
 h1,h2,h3 { text-align:center; color:#153e46; }
 
 /* Sidebar */
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f2d33, #153e46);
-    display: flex;
-    flex-direction: column;
+    padding-top: 20px;
 }
-
-/* محتوى البار كامل */
-section[data-testid="stSidebar"] > div {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;   /* 👈 هذا اللي يوسّط عموديًا */
-    align-items: center;       /* 👈 توسيط أفقي */
-    height: 100vh;
+section[data-testid="stSidebar"] * {
+    color: white !important;
+    text-align: center;
 }
-
-/* اللوقو */
-.sidebar-logo {
-    margin-bottom: 30px;
-}
-
-/* الأزرار */
 section[data-testid="stSidebar"] .stButton {
     display: flex;
     justify-content: center;
 }
-
 section[data-testid="stSidebar"] .stButton > button {
+    width: auto;
     padding: 10px 26px;
-    margin: 12px 0;
+    margin: 10px auto;
     background: rgba(255,255,255,0.14);
     border-radius: 18px;
     border: none;
@@ -92,12 +78,10 @@ section[data-testid="stSidebar"] .stButton > button {
     white-space: nowrap;
     box-shadow: 0 6px 18px rgba(0,0,0,0.18);
 }
-
 section[data-testid="stSidebar"] .stButton > button:hover {
     background: rgba(255,255,255,0.25);
     transform: scale(1.03);
 }
-
 
 /* Cards */
 .card {
