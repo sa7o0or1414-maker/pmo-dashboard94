@@ -30,15 +30,11 @@ st.markdown("""
 :root{
 --main:#153e46;--light:#1f5661;--dark:#0f2d33;
 }
-
-/* سنترة شاملة */
 html, body, [class*="css"] {
     direction: rtl;
     text-align: center !important;
     font-family: 'Segoe UI', sans-serif;
 }
-
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background-color: var(--dark);
     display: flex;
@@ -46,8 +42,6 @@ section[data-testid="stSidebar"] {
     justify-content: center;
     align-items: center;
 }
-
-/* أزرار */
 .stButton button {
     width: 230px;
     height: 56px;
@@ -63,8 +57,6 @@ section[data-testid="stSidebar"] {
 .stButton button:hover {
     background: var(--light);
 }
-
-/* محتوى الصفحة */
 .block-container {
     display: flex;
     flex-direction: column;
@@ -72,24 +64,16 @@ section[data-testid="stSidebar"] {
     align-items: center;
     min-height: 90vh;
 }
-
-/* العناوين */
 h1, h2, h3 {
     color: var(--main);
     text-align: center !important;
 }
-
-/* النصوص */
 p, label, span, div {
     text-align: center !important;
 }
-
-/* حقول الإدخال */
 input {
     text-align: center !important;
 }
-
-/* KPI Cards */
 .kpi {
     background: white;
     padding: 28px;
@@ -97,8 +81,6 @@ input {
     width: 100%;
     box-shadow: 0 8px 25px rgba(0,0,0,0.08);
 }
-
-/* اللوقو */
 img {
     display: block;
     margin: 0 auto 14px auto;
@@ -124,6 +106,7 @@ with st.sidebar:
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
 
+    # تظهر مباشرة بعد تسجيل الدخول
     if st.session_state.role == "admin":
         if st.button("رفع البيانات"):
             st.session_state.page = "upload"
@@ -135,6 +118,7 @@ with st.sidebar:
         if st.button("تسجيل خروج"):
             st.session_state.role = "viewer"
             st.session_state.page = "home"
+            st.rerun()
 
 # ---------------- تسجيل الدخول ----------------
 if st.session_state.page == "login":
@@ -146,8 +130,9 @@ if st.session_state.page == "login":
     if st.button("دخول"):
         if u == ADMIN_USER and p == ADMIN_PASS:
             st.session_state.role = "admin"
-            st.success("تم تسجيل الدخول بنجاح")
             st.session_state.page = "home"
+            st.success("تم تسجيل الدخول بنجاح")
+            st.rerun()  # 🔴 التحديث الفوري
         else:
             st.error("بيانات الدخول غير صحيحة")
 
