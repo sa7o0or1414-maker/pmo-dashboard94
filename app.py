@@ -35,9 +35,7 @@ html, body, [class*="css"] {
     direction: rtl;
     font-family: 'Segoe UI', sans-serif;
 }
-h1,h2,h3,p,label {
-    text-align:center !important;
-}
+h1,h2,h3,p,label { text-align:center !important; }
 
 /* ===== Sidebar ===== */
 section[data-testid="stSidebar"] {
@@ -208,11 +206,11 @@ if st.session_state.page == "home":
     # ===== KPI =====
     k1,k2,k3,k4,k5,k6 = st.columns(6)
     k1.markdown(f"<div class='card blue'><span>عدد المشاريع</span><h2>{len(filtered)}</h2></div>", unsafe_allow_html=True)
-    k2.markdown(f"<div class='card green'><span>قيمة العقود</span><h2>{filtered['قيمة العقد'].sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k3.markdown(f"<div class='card gray'><span>المستخلصات</span><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k4.markdown(f"<div class='card orange'><span>المتبقي</span><h2>{filtered['المتبقي من المستخلص'].sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{filtered['نسبة الصرف'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
-    k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{filtered['نسبة الإنجاز'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
+    k2.markdown(f"<div class='card green'><span>قيمة العقود</span><h2>{pd.to_numeric(filtered['قيمة العقد'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k3.markdown(f"<div class='card gray'><span>المستخلصات</span><h2>{pd.to_numeric(filtered['قيمة المستخلصات'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k4.markdown(f"<div class='card orange'><span>المتبقي</span><h2>{pd.to_numeric(filtered['المتبقي من المستخلص'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{pd.to_numeric(filtered['نسبة الصرف'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
+    k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{pd.to_numeric(filtered['نسبة الإنجاز'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
 
     # ===== Charts (منسقة ومتوازنة) =====
     c1, c2 = st.columns(2)
@@ -220,7 +218,8 @@ if st.session_state.page == "home":
     with c1:
         st.subheader("قيمة العقود حسب الجهة")
         contracts_by_entity = (
-            filtered.groupby("الجهة", as_index=False)["قيمة العقد"]
+            filtered.assign(**{"قيمة العقد": pd.to_numeric(filtered["قيمة العقد"], errors="coerce")})
+            .groupby("الجهة", as_index=False)["قيمة العقد"]
             .sum()
             .sort_values("قيمة العقد", ascending=False)
         )
@@ -228,22 +227,37 @@ if st.session_state.page == "home":
 
     with c2:
         st.subheader("حالة المشاريع")
-        status_counts = (
-            filtered["حالة المشروع"]
-            .value_counts()
-            .reset_index()
-            .rename(columns={"index": "الحالة", "حالة المشروع": "عدد المشاريع"})
-            .sort_values("عدد المشاريع", ascending=False)
-        )
+        # ✅ إصلاح KeyError: ضمان وجود عمود اسمه "الحالة"
+        vc = filtered["حالة المشروع"].fillna("غير محدد").astype(str).value_counts()
+        status_counts = vc.rename_axis("الحالة").reset_index(name="عدد المشاريع")
+        status_counts = status_counts.sort_values("عدد المشاريع", ascending=False)
+
         st.bar_chart(status_counts.set_index("الحالة"), use_container_width=True)
 
-    # ===== شارت إضافي =====
+    # ===== شارت إضافي: عدد المشاريع حسب البلدية =====
     st.subheader("عدد المشاريع حسب البلدية")
-    municipality_counts = (
-        filtered["البلدية"]
-        .value_counts()
-        .reset_index()
-        .rename(columns={"index": "البلدية", "البلدية": "عدد المشاريع"})
-        .sort_values("عدد المشاريع", ascending=False)
-    )
+    vc_m = filtered["البلدية"].fillna("غير محدد").astype(str).value_counts()
+    municipality_counts = vc_m.rename_axis("البلدية").reset_index(name="عدد المشاريع")
+    municipality_counts = municipality_counts.sort_values("عدد المشاريع", ascending=False)
+
     st.bar_chart(municipality_counts.set_index("البلدية"), use_container_width=True)
+
+    # ===== تحليل التأخير (بدون تغيير باقي الصفحة) =====
+    today = pd.Timestamp.today()
+    overdue = filtered[(filtered["تاريخ الانتهاء"] < today) & (~filtered["حالة المشروع"].isin(["مكتمل","منجز"]))]
+
+    risk = filtered[(filtered["تاريخ الانتهاء"] <= today + timedelta(days=30)) &
+                    (pd.to_numeric(filtered["نسبة الإنجاز"], errors="coerce") < 70)].copy()
+    risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
+
+    b1,b2 = st.columns(2)
+    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
+        st.session_state.show_overdue = not st.session_state.show_overdue
+    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
+        st.session_state.show_risk = not st.session_state.show_risk
+
+    if st.session_state.show_overdue:
+        st.dataframe(overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]], use_container_width=True)
+
+    if st.session_state.show_risk:
+        st.dataframe(risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","نسبة الإنجاز","سبب التوقع"]], use_container_width=True)
