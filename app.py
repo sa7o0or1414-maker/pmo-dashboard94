@@ -3,8 +3,6 @@ import pandas as pd
 from pathlib import Path
 from datetime import timedelta
 import base64
-
-# Altair
 import altair as alt
 
 # ================= إعدادات الصفحة =================
@@ -26,11 +24,9 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ================= بيانات الدخول =================
 ADMIN_USER = "admin"
 ADMIN_PASS = "1234"
 
-# ================= المسارات =================
 DATA_DIR = Path("data")
 ASSETS_DIR = Path("assets")
 DATA_DIR.mkdir(exist_ok=True)
@@ -39,7 +35,7 @@ ASSETS_DIR.mkdir(exist_ok=True)
 EXCEL_PATH = DATA_DIR / "data.xlsx"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 
-# ================= CSS =================
+# ================= CSS (معدل للبار فقط) =================
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -47,34 +43,41 @@ html, body, [class*="css"] {
     font-family: 'Segoe UI', sans-serif;
     color: #153e46;
 }
-h1,h2,h3 { text-align:center; color:#153e46; }
 
 /* ===== Sidebar ===== */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f2d33, #153e46);
-    padding-top: 25px;
+    padding-top: 30px;
 }
 section[data-testid="stSidebar"] * {
     color: white !important;
     text-align: center;
 }
+
+/* زر متوازن مع النص */
 section[data-testid="stSidebar"] .stButton {
     display: flex;
     justify-content: center;
 }
+
 section[data-testid="stSidebar"] .stButton > button {
-    width: 85%;
-    padding: 12px 0;
-    margin: 10px auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 26px;
+    margin: 10px 0;
     background: rgba(255,255,255,0.18);
     border-radius: 20px;
     border: none;
     font-size: 14px;
     white-space: nowrap;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    width: auto;
 }
+
 section[data-testid="stSidebar"] .stButton > button:hover {
     background: rgba(255,255,255,0.28);
+    transform: translateY(-1px);
 }
 
 /* ===== Cards ===== */
@@ -133,11 +136,11 @@ def build_status_df(df):
     out["لون"] = out["الحالة"].apply(status_color)
     return out
 
-# ================= Sidebar (رجع مثل القديم) =================
+# ================= Sidebar =================
 with st.sidebar:
     if LOGO_PATH.exists():
         st.markdown(
-            f"<img src='data:image/png;base64,{img64(LOGO_PATH)}' width='120' style='margin-bottom:20px;'>",
+            f"<img src='data:image/png;base64,{img64(LOGO_PATH)}' width='120' style='margin-bottom:25px;'>",
             unsafe_allow_html=True
         )
 
