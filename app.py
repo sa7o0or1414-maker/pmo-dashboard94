@@ -8,16 +8,12 @@ st.set_page_config(page_title="منصة PMO", layout="wide")
 # ---------------- الحالة ----------------
 if "page" not in st.session_state:
     st.session_state.page = "home"
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
 if "role" not in st.session_state:
-    st.session_state.role = None
+    st.session_state.role = "viewer"  # مشاهد افتراضي
 
-# ---------------- المستخدمين ----------------
-USERS = {
-    "admin": {"password": "1234", "role": "admin"},
-    "viewer": {"password": "1234", "role": "viewer"},
-}
+# ---------------- بيانات المسؤول ----------------
+ADMIN_USER = "admin"
+ADMIN_PASS = "1234"
 
 # ---------------- المسارات ----------------
 DATA_DIR = Path("data")
@@ -28,73 +24,87 @@ ASSETS_DIR.mkdir(exist_ok=True)
 EXCEL_PATH = DATA_DIR / "data.xlsx"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 
-# ---------------- CSS ----------------
+# ---------------- CSS (سنترة + تنسيق جميل) ----------------
 st.markdown("""
 <style>
 :root{
 --main:#153e46;--light:#1f5661;--dark:#0f2d33;
 }
-html,body,[class*="css"]{
-direction:rtl;text-align:center;font-family:'Segoe UI';
+
+/* سنترة شاملة */
+html, body, [class*="css"] {
+    direction: rtl;
+    text-align: center !important;
+    font-family: 'Segoe UI', sans-serif;
 }
-section[data-testid="stSidebar"]{
-background:var(--dark);
-display:flex;justify-content:center;align-items:center;
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: var(--dark);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
-.stButton button{
-width:220px;height:55px;border-radius:14px;
-background:var(--main);color:white;border:none;
-font-size:16px;margin-bottom:14px;
+
+/* أزرار */
+.stButton button {
+    width: 230px;
+    height: 56px;
+    background: var(--main);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    font-size: 16px;
+    margin-bottom: 14px;
+    text-align: center;
+    transition: 0.3s;
 }
-.stButton button:hover{background:var(--light);}
-.block-container{
-display:flex;flex-direction:column;
-justify-content:center;align-items:center;
-min-height:90vh;
+.stButton button:hover {
+    background: var(--light);
 }
-.kpi{
-background:white;padding:25px;border-radius:18px;
-width:100%;box-shadow:0 6px 20px rgba(0,0,0,.08);
+
+/* محتوى الصفحة */
+.block-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 90vh;
+}
+
+/* العناوين */
+h1, h2, h3 {
+    color: var(--main);
+    text-align: center !important;
+}
+
+/* النصوص */
+p, label, span, div {
+    text-align: center !important;
+}
+
+/* حقول الإدخال */
+input {
+    text-align: center !important;
+}
+
+/* KPI Cards */
+.kpi {
+    background: white;
+    padding: 28px;
+    border-radius: 20px;
+    width: 100%;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+
+/* اللوقو */
+img {
+    display: block;
+    margin: 0 auto 14px auto;
 }
 </style>
 """, unsafe_allow_html=True)
-
-# ---------------- Sidebar ----------------
-with st.sidebar:
-    if LOGO_PATH.exists():
-        st.image(str(LOGO_PATH), width=120)
-    else:
-        st.markdown("منصة PMO")
-
-    if st.button("الصفحة الرئيسية"):
-        st.session_state.page = "home"
-
-    if st.button("رفع البيانات"):
-        st.session_state.page = "upload"
-
-    if not st.session_state.logged_in:
-        if st.button("تسجيل الدخول"):
-            st.session_state.page = "login"
-    else:
-        if st.button("تسجيل خروج"):
-            st.session_state.logged_in = False
-            st.session_state.role = None
-            st.session_state.page = "home"
-
-# ---------------- تسجيل الدخول ----------------
-if st.session_state.page == "login":
-    st.title("تسجيل الدخول")
-    u = st.text_input("اسم المستخدم")
-    p = st.text_input("كلمة المرور", type="password")
-
-    if st.button("دخول"):
-        if u in USERS and USERS[u]["password"] == p:
-            st.session_state.logged_in = True
-            st.session_state.role = USERS[u]["role"]
-            st.success("تم تسجيل الدخول")
-            st.session_state.page = "home"
-        else:
-            st.error("بيانات غير صحيحة")
 
 # ---------------- تحميل البيانات ----------------
 def load_data():
@@ -103,6 +113,43 @@ def load_data():
     return None
 
 df = load_data()
+
+# ---------------- Sidebar ----------------
+with st.sidebar:
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=120)
+    else:
+        st.markdown("<b style='color:white'>منصة PMO</b>", unsafe_allow_html=True)
+
+    if st.button("الصفحة الرئيسية"):
+        st.session_state.page = "home"
+
+    if st.session_state.role == "admin":
+        if st.button("رفع البيانات"):
+            st.session_state.page = "upload"
+
+    if st.session_state.role != "admin":
+        if st.button("تسجيل دخول المسؤول"):
+            st.session_state.page = "login"
+    else:
+        if st.button("تسجيل خروج"):
+            st.session_state.role = "viewer"
+            st.session_state.page = "home"
+
+# ---------------- تسجيل الدخول ----------------
+if st.session_state.page == "login":
+    st.title("تسجيل دخول المسؤول")
+
+    u = st.text_input("اسم المستخدم")
+    p = st.text_input("كلمة المرور", type="password")
+
+    if st.button("دخول"):
+        if u == ADMIN_USER and p == ADMIN_PASS:
+            st.session_state.role = "admin"
+            st.success("تم تسجيل الدخول بنجاح")
+            st.session_state.page = "home"
+        else:
+            st.error("بيانات الدخول غير صحيحة")
 
 # ---------------- الصفحة الرئيسية (Dashboard) ----------------
 if st.session_state.page == "home":
@@ -132,10 +179,10 @@ if st.session_state.page == "home":
         st.subheader("تفاصيل المشاريع")
         st.dataframe(df, use_container_width=True)
 
-# ---------------- رفع البيانات ----------------
+# ---------------- رفع البيانات (Admin فقط) ----------------
 if st.session_state.page == "upload":
-    if not st.session_state.logged_in or st.session_state.role != "admin":
-        st.warning("هذه الصفحة متاحة للمسؤول فقط")
+    if st.session_state.role != "admin":
+        st.warning("غير مصرح لك بالوصول")
     else:
         st.title("رفع البيانات")
 
@@ -143,7 +190,7 @@ if st.session_state.page == "upload":
         if excel:
             with open(EXCEL_PATH, "wb") as f:
                 f.write(excel.getbuffer())
-            st.success("تم حفظ البيانات")
+            st.success("تم حفظ ملف البيانات")
 
         st.divider()
 
