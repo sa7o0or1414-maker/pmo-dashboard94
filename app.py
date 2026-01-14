@@ -3,6 +3,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import timedelta
 import base64
+import altair as alt
 
 # ================= إعدادات الصفحة =================
 st.set_page_config(
@@ -44,47 +45,40 @@ html, body, [class*="css"] {
     font-family: 'Segoe UI', sans-serif;
     color: #153e46;
 }
-h1,h2,h3 {
-    text-align:center;
-    color:#153e46;
-}
+h1,h2,h3 { text-align:center; color:#153e46; }
 
-/* ============ Sidebar ============ */
+/* Sidebar */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f2d33, #153e46);
     padding-top: 20px;
 }
-
 section[data-testid="stSidebar"] * {
     color: white !important;
     text-align: center;
 }
-
-/* Sidebar Buttons */
 section[data-testid="stSidebar"] .stButton {
     display: flex;
     justify-content: center;
 }
-
 section[data-testid="stSidebar"] .stButton > button {
-    width: auto;
-    padding: 10px 28px;
-    margin: 12px auto;
+    padding: 10px 26px;
+    margin: 10px auto;
     background: rgba(255,255,255,0.14);
     border-radius: 18px;
     border: none;
     font-size: 14px;
-    font-weight: 500;
     white-space: nowrap;
     box-shadow: 0 6px 18px rgba(0,0,0,0.18);
 }
-
 section[data-testid="stSidebar"] .stButton > button:hover {
     background: rgba(255,255,255,0.25);
     transform: scale(1.03);
 }
+.active-btn {
+    background: rgba(255,255,255,0.35) !important;
+}
 
-/* ============ Cards ============ */
+/* Cards */
 .card {
     background: #fff;
     padding: 18px;
@@ -92,15 +86,11 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     box-shadow: 0 10px 28px rgba(0,0,0,0.08);
     text-align: center;
 }
-.card h2 {
-    font-size: 20px;
-    white-space: nowrap;
-}
+.card h2 { font-size: 20px; white-space: nowrap; }
 .card.blue { border-top:4px solid #2c7be5; }
 .card.green { border-top:4px solid #00a389; }
-.card.red { border-top:4px solid #e63946; }
-.card.gray { border-top:4px solid #6c757d; }
 .card.orange { border-top:4px solid #f4a261; }
+.card.gray { border-top:4px solid #6c757d; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -123,10 +113,16 @@ def load_data():
     df["تاريخ التسليم"] = pd.to_datetime(df["تاريخ التسليم"], errors="coerce")
     return df
 
+STATUS_COLORS = {
+    "مكتمل": "#00a389",
+    "جاري": "#2c7be5",
+    "متأخر": "#e63946",
+    "متوقف": "#6c757d",
+    "غير محدد": "#f4a261"
+}
+
 # ================= Sidebar =================
 with st.sidebar:
-
-    # اللوقو فقط (بدون نص)
     if LOGO_PATH.exists():
         st.markdown(
             f"<div style='text-align:{st.session_state.logo_align}; margin-bottom:20px;'>"
@@ -134,16 +130,22 @@ with st.sidebar:
             unsafe_allow_html=True
         )
 
-    if st.button("الصفحة الرئيسية"):
-        st.session_state.page = "home"
+    def nav_button(label, page):
+        cls = "active-btn" if st.session_state.page == page else ""
+        if st.button(label, key=label):
+            st.session_state.page = page
+        st.markdown(
+            f"<style>button[kind='secondary'][aria-label='{label}']{{}}</style>",
+            unsafe_allow_html=True
+        )
+
+    nav_button("الصفحة الرئيسية", "home")
 
     if st.session_state.role == "viewer":
-        if st.button("تسجيل الدخول"):
-            st.session_state.page = "login"
+        nav_button("تسجيل الدخول", "login")
 
     if st.session_state.role == "admin":
-        if st.button("رفع البيانات"):
-            st.session_state.page = "upload"
+        nav_button("رفع البيانات", "upload")
         if st.button("تسجيل خروج"):
             st.session_state.role = "viewer"
             st.session_state.page = "home"
@@ -167,28 +169,25 @@ if st.session_state.page == "upload":
     st.title("رفع البيانات")
     excel = st.file_uploader("ملف Excel", ["xlsx"])
     logo = st.file_uploader("لوقو PNG", ["png"])
-    st.session_state.logo_align = st.selectbox(
-        "محاذاة اللوقو", ["center", "right", "left"]
-    )
+    st.session_state.logo_align = st.selectbox("محاذاة اللوقو", ["center","right","left"])
     if excel:
         EXCEL_PATH.write_bytes(excel.getbuffer())
-        st.success("تم رفع البيانات بنجاح")
+        st.success("تم رفع البيانات")
     if logo:
         LOGO_PATH.write_bytes(logo.getbuffer())
-        st.success("تم رفع اللوقو بنجاح")
+        st.success("تم رفع اللوقو")
 
 # ================= Home =================
 if st.session_state.page == "home":
     st.title("لوحة التحكم")
     df = load_data()
     if df is None:
-        st.warning("يرجى رفع ملف Excel من صفحة رفع البيانات")
+        st.warning("يرجى رفع ملف Excel")
         st.stop()
 
     # ===== Filters =====
     f1,f2,f3 = st.columns(3)
     f4,f5 = st.columns(2)
-
     with f1:
         cat = st.selectbox("التصنيف", ["الكل"] + sorted(df["التصنيف"].dropna().unique()))
     with f2:
@@ -216,9 +215,26 @@ if st.session_state.page == "home":
     k5.markdown(f"<div class='card blue'><h2>{filtered['نسبة الصرف'].mean():.1f}%</h2>متوسط الصرف</div>", unsafe_allow_html=True)
     k6.markdown(f"<div class='card green'><h2>{filtered['نسبة الإنجاز'].mean():.1f}%</h2>متوسط الإنجاز</div>", unsafe_allow_html=True)
 
-    # ===== حالة المشاريع =====
+    # ===== حالة المشاريع (أفقي + ملون) =====
     st.subheader("حالة المشاريع")
-    st.bar_chart(filtered["حالة المشروع"].value_counts(), use_container_width=True)
+    status_df = (
+        filtered["حالة المشروع"]
+        .fillna("غير محدد")
+        .value_counts()
+        .reset_index()
+        .rename(columns={"index":"الحالة","حالة المشروع":"عدد"})
+    )
+    chart = alt.Chart(status_df).mark_bar().encode(
+        x=alt.X("عدد:Q"),
+        y=alt.Y("الحالة:N", sort="-x"),
+        color=alt.Color(
+            "الحالة:N",
+            scale=alt.Scale(domain=list(STATUS_COLORS.keys()),
+                            range=list(STATUS_COLORS.values()))
+        ),
+        tooltip=["الحالة","عدد"]
+    ).properties(height=220)
+    st.altair_chart(chart, use_container_width=True)
 
     # ===== شارتين جنب بعض =====
     c1, c2 = st.columns(2)
@@ -241,7 +257,7 @@ if st.session_state.page == "home":
     ].copy()
     risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
 
-    b1, b2 = st.columns(2)
+    b1,b2 = st.columns(2)
     if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
         st.session_state.show_overdue = not st.session_state.show_overdue
     if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
@@ -259,7 +275,7 @@ if st.session_state.page == "home":
         filtered[
             ["اسم المشروع","الجهة","البلدية","المقاول","حالة المشروع",
              "تاريخ التسليم","تاريخ الانتهاء","قيمة العقد","نسبة الإنجاز","نسبة الصرف"]
-        ].sort_values("تاريخ الانتهاء"),
+        ],
         use_container_width=True,
         hide_index=True
     )
