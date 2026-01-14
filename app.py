@@ -133,12 +133,10 @@ def load_data():
 
 # ================= Sidebar =================
 with st.sidebar:
-
     if LOGO_PATH.exists():
-        b64 = image_base64(LOGO_PATH)
         st.markdown(
             f"<div style='text-align:{st.session_state.logo_align}; margin-bottom:12px;'>"
-            f"<img src='data:image/png;base64,{b64}' width='110'></div>",
+            f"<img src='data:image/png;base64,{image_base64(LOGO_PATH)}' width='110'></div>",
             unsafe_allow_html=True
         )
 
@@ -147,11 +145,9 @@ with st.sidebar:
 
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
-
     if st.session_state.role == "viewer":
         if st.button("تسجيل الدخول"):
             st.session_state.page = "login"
-
     if st.session_state.role == "admin":
         if st.button("رفع البيانات"):
             st.session_state.page = "upload"
@@ -190,7 +186,6 @@ if st.session_state.page == "upload":
     if excel_file:
         EXCEL_PATH.write_bytes(excel_file.getbuffer())
         st.success("تم رفع ملف البيانات")
-
     if logo_file:
         LOGO_PATH.write_bytes(logo_file.getbuffer())
         st.success("تم رفع اللوقو")
@@ -231,27 +226,22 @@ if st.session_state.page == "home":
     # ===== KPI =====
     k1,k2,k3,k4,k5,k6 = st.columns(6)
     k1.markdown(f"<div class='card blue'><span>عدد المشاريع</span><h2>{len(filtered)}</h2></div>", unsafe_allow_html=True)
-    k2.markdown(f"<div class='card.green'><span>قيمة العقود</span><h2>{pd.to_numeric(filtered['قيمة العقد'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k3.markdown(f"<div class='card.gray'><span>المستخلصات</span><h2>{pd.to_numeric(filtered['قيمة المستخلصات'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k4.markdown(f"<div class='card.orange'><span>المتبقي</span><h2>{pd.to_numeric(filtered['المتبقي من المستخلص'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k5.markdown(f"<div class='card.blue'><span>متوسط الصرف</span><h2>{pd.to_numeric(filtered['نسبة الصرف'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
-    k6.markdown(f"<div class='card.green'><span>متوسط الإنجاز</span><h2>{pd.to_numeric(filtered['نسبة الإنجاز'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
+    k2.markdown(f"<div class='card green'><span>قيمة العقود</span><h2>{pd.to_numeric(filtered['قيمة العقد'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k3.markdown(f"<div class='card gray'><span>المستخلصات</span><h2>{pd.to_numeric(filtered['قيمة المستخلصات'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k4.markdown(f"<div class='card orange'><span>المتبقي</span><h2>{pd.to_numeric(filtered['المتبقي من المستخلص'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{pd.to_numeric(filtered['نسبة الصرف'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
+    k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{pd.to_numeric(filtered['نسبة الإنجاز'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
 
-    # ===== شارت حالة المشاريع (ملون) =====
+    # ===== شارت حالة المشاريع (صحيح) =====
     st.subheader("حالة المشاريع")
 
     status_counts = filtered["حالة المشروع"].fillna("غير محدد").value_counts()
-    status_chart = pd.DataFrame({
-        "مكتمل": [status_counts.get("مكتمل", 0)],
-        "جاري": [status_counts.get("جاري", 0)],
-        "متأخر": [status_counts.get("متأخر", 0)],
-        "متوقف": [status_counts.get("متوقف", 0)],
-        "غير محدد": [status_counts.get("غير محدد", 0)],
-    })
+    status_df = status_counts.reset_index()
+    status_df.columns = ["الحالة", "عدد المشاريع"]
 
-    st.bar_chart(status_chart, use_container_width=True)
+    st.bar_chart(status_df.set_index("الحالة"), use_container_width=True)
 
-    # ===== شارتات سفلية بنفس المستوى =====
+    # ===== الشارتات السفلية =====
     c1, c2 = st.columns(2)
 
     with c1:
@@ -286,13 +276,7 @@ if st.session_state.page == "home":
         st.session_state.show_risk = not st.session_state.show_risk
 
     if st.session_state.show_overdue:
-        st.dataframe(
-            overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]],
-            use_container_width=True
-        )
+        st.dataframe(overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]], use_container_width=True)
 
     if st.session_state.show_risk:
-        st.dataframe(
-            risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","سبب التوقع"]],
-            use_container_width=True
-        )
+        st.dataframe(risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","سبب التوقع"]], use_container_width=True)
