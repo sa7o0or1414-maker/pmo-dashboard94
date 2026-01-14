@@ -4,7 +4,11 @@ from pathlib import Path
 from datetime import timedelta
 
 # ================= إعدادات الصفحة =================
-st.set_page_config(page_title="لوحة التحكم | PMO", layout="wide")
+st.set_page_config(
+    page_title="لوحة التحكم | PMO",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # ================= مسارات =================
 DATA_DIR = Path("data")
@@ -16,7 +20,7 @@ for k in ["show_overdue", "show_risk"]:
     if k not in st.session_state:
         st.session_state[k] = False
 
-# ================= CSS (Power BI Look) =================
+# ================= CSS (هوية + سايدبار يمين) =================
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -25,10 +29,27 @@ html, body, [class*="css"] {
 }
 h1,h2,h3,p,label { text-align:center !important; }
 
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #0f2d33;
+}
+section[data-testid="stSidebar"] * {
+    color: white !important;
+}
+section[data-testid="stSidebar"] .stButton button {
+    width: 100%;
+    background: #153e46;
+    border-radius: 14px;
+    border: none;
+    margin-bottom: 12px;
+}
+
+/* Sections */
 .section {
     margin-top: 30px;
 }
 
+/* Cards */
 .card {
     background: #ffffff;
     padding: 22px;
@@ -36,17 +57,17 @@ h1,h2,h3,p,label { text-align:center !important; }
     box-shadow: 0 10px 28px rgba(0,0,0,0.08);
     text-align: center;
 }
-
 .card.blue { border-top: 5px solid #2c7be5; }
 .card.green { border-top: 5px solid #00a389; }
 .card.orange { border-top: 5px solid #f4a261; }
 .card.red { border-top: 5px solid #e63946; }
 .card.gray { border-top: 5px solid #6c757d; }
 
+/* Filters */
 .filter-box {
     background: #f6f7f9;
-    padding: 16px;
-    border-radius: 14px;
+    padding: 18px;
+    border-radius: 16px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -71,6 +92,22 @@ def load_data():
 
     return df
 
+# ================= Sidebar (البار اليمين) =================
+with st.sidebar:
+    st.markdown("## PMO")
+    st.markdown("مكتب إدارة المشاريع")
+
+    if st.button("الصفحة الرئيسية"):
+        pass
+
+    st.divider()
+
+    if st.button("رفع البيانات"):
+        st.info("يتم رفع الملف من نفس الصفحة (Admin فقط)")
+
+    st.divider()
+    st.caption("لوحة تحكم PMO")
+
 # ================= الصفحة الرئيسية =================
 st.title("لوحة التحكم")
 
@@ -79,7 +116,7 @@ if df is None:
     st.warning("ارفع ملف Excel لعرض لوحة التحكم")
     st.stop()
 
-# ================= الفلاتر (صفين – ما تختفي) =================
+# ================= الفلاتر =================
 st.markdown("<div class='section filter-box'>", unsafe_allow_html=True)
 
 f1,f2,f3 = st.columns(3)
@@ -124,7 +161,6 @@ st.markdown("</div>", unsafe_allow_html=True)
 st.markdown("<div class='section'>", unsafe_allow_html=True)
 
 c1,c2 = st.columns(2)
-
 with c1:
     st.subheader("عدد المشاريع حسب الحالة")
     st.bar_chart(filtered["حالة المشروع"].value_counts())
