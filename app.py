@@ -231,30 +231,36 @@ if st.session_state.page == "home":
     # ===== KPI =====
     k1,k2,k3,k4,k5,k6 = st.columns(6)
     k1.markdown(f"<div class='card blue'><span>عدد المشاريع</span><h2>{len(filtered)}</h2></div>", unsafe_allow_html=True)
-    k2.markdown(f"<div class='card green'><span>قيمة العقود</span><h2>{pd.to_numeric(filtered['قيمة العقد'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k3.markdown(f"<div class='card gray'><span>المستخلصات</span><h2>{pd.to_numeric(filtered['قيمة المستخلصات'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k4.markdown(f"<div class='card orange'><span>المتبقي</span><h2>{pd.to_numeric(filtered['المتبقي من المستخلص'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{pd.to_numeric(filtered['نسبة الصرف'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
-    k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{pd.to_numeric(filtered['نسبة الإنجاز'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
+    k2.markdown(f"<div class='card.green'><span>قيمة العقود</span><h2>{pd.to_numeric(filtered['قيمة العقد'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k3.markdown(f"<div class='card.gray'><span>المستخلصات</span><h2>{pd.to_numeric(filtered['قيمة المستخلصات'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k4.markdown(f"<div class='card.orange'><span>المتبقي</span><h2>{pd.to_numeric(filtered['المتبقي من المستخلص'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
+    k5.markdown(f"<div class='card.blue'><span>متوسط الصرف</span><h2>{pd.to_numeric(filtered['نسبة الصرف'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
+    k6.markdown(f"<div class='card.green'><span>متوسط الإنجاز</span><h2>{pd.to_numeric(filtered['نسبة الإنجاز'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
 
-    # ===== شارت حالة المشاريع =====
+    # ===== شارت حالة المشاريع (ملون) =====
     st.subheader("حالة المشاريع")
-    st.bar_chart(filtered["حالة المشروع"].value_counts(), use_container_width=True)
+
+    status_counts = filtered["حالة المشروع"].fillna("غير محدد").value_counts()
+    status_chart = pd.DataFrame({
+        "مكتمل": [status_counts.get("مكتمل", 0)],
+        "جاري": [status_counts.get("جاري", 0)],
+        "متأخر": [status_counts.get("متأخر", 0)],
+        "متوقف": [status_counts.get("متوقف", 0)],
+        "غير محدد": [status_counts.get("غير محدد", 0)],
+    })
+
+    st.bar_chart(status_chart, use_container_width=True)
 
     # ===== شارتات سفلية بنفس المستوى =====
     c1, c2 = st.columns(2)
 
     with c1:
-        st.markdown("<div style='height:420px;'>", unsafe_allow_html=True)
         st.subheader("عدد المشاريع حسب البلدية")
         st.bar_chart(filtered["البلدية"].value_counts(), use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with c2:
-        st.markdown("<div style='height:420px;'>", unsafe_allow_html=True)
         st.subheader("قيمة العقود حسب الجهة")
         st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum(), use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # ===== تحليل التأخير =====
     today = pd.Timestamp.today()
@@ -280,7 +286,13 @@ if st.session_state.page == "home":
         st.session_state.show_risk = not st.session_state.show_risk
 
     if st.session_state.show_overdue:
-        st.dataframe(overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]], use_container_width=True)
+        st.dataframe(
+            overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]],
+            use_container_width=True
+        )
 
     if st.session_state.show_risk:
-        st.dataframe(risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","سبب التوقع"]], use_container_width=True)
+        st.dataframe(
+            risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","سبب التوقع"]],
+            use_container_width=True
+        )
