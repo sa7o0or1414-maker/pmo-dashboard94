@@ -15,6 +15,9 @@ if "role" not in st.session_state:
     st.session_state.role = "viewer"
 if "page" not in st.session_state:
     st.session_state.page = "home"
+if "logo_align" not in st.session_state:
+    st.session_state.logo_align = "center"
+
 for k in ["show_overdue", "show_risk"]:
     if k not in st.session_state:
         st.session_state[k] = False
@@ -25,27 +28,29 @@ ADMIN_PASS = "1234"
 
 # ================= المسارات =================
 DATA_DIR = Path("data")
+ASSETS_DIR = Path("assets")
 DATA_DIR.mkdir(exist_ok=True)
-EXCEL_PATH = DATA_DIR / "data.xlsx"
+ASSETS_DIR.mkdir(exist_ok=True)
 
-# ================= CSS =================
+EXCEL_PATH = DATA_DIR / "data.xlsx"
+LOGO_PATH = ASSETS_DIR / "logo.png"
+
+# ================= CSS (البار + لون الخط) =================
 st.markdown("""
 <style>
 html, body, [class*="css"] {
     direction: rtl;
     font-family: 'Segoe UI', sans-serif;
+    color: #153e46;
 }
-h1,h2,h3,p,label { text-align:center !important; }
+h1,h2,h3,p,label {
+    text-align:center !important;
+    color: #153e46 !important;
+}
 
 /* ===== Sidebar ===== */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f2d33, #153e46);
-    display: flex;
-    justify-content: center;
-}
-section[data-testid="stSidebar"] > div {
-    width: 100%;
-    padding-top: 40px;
 }
 section[data-testid="stSidebar"] * {
     color: white !important;
@@ -58,20 +63,16 @@ section[data-testid="stSidebar"] .stButton {
     justify-content: center;
 }
 section[data-testid="stSidebar"] .stButton > button {
-    width: 72%;
-    height: 46px;
+    width: 78%;
+    height: 48px;
     margin: 12px 0;
-    background: rgba(255,255,255,0.14);
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.25);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    white-space: nowrap;
+    background: #1f4f58;
+    border-radius: 16px;
+    border: none;
+    font-size: 15px;
 }
 section[data-testid="stSidebar"] .stButton > button:hover {
-    background: rgba(255,255,255,0.28);
+    background: #2b6772;
 }
 
 /* ===== Cards ===== */
@@ -84,7 +85,6 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 }
 .card span {
     font-size: 13px;
-    color: #6c757d;
 }
 .card h2 {
     font-size: 22px;
@@ -95,6 +95,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 .card.green { border-top: 4px solid #00a389; }
 .card.orange { border-top: 4px solid #f4a261; }
 .card.gray { border-top: 4px solid #6c757d; }
+.card.red { border-top: 4px solid #e63946; }
 
 /* ===== Filters ===== */
 .filter-row .stSelectbox > div {
@@ -126,9 +127,19 @@ def load_data():
 
 # ================= Sidebar =================
 with st.sidebar:
+
+    # ===== Logo =====
+    if LOGO_PATH.exists():
+        align = st.session_state.logo_align
+        st.markdown(
+            f"<div style='text-align:{'center' if align=='center' else 'right' if align=='right' else 'left'};'>"
+            f"<img src='data:image/png;base64,{LOGO_PATH.read_bytes().hex()}' width='120'>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+
     st.markdown("## PMO")
     st.markdown("مكتب إدارة المشاريع")
-    st.markdown("<br>", unsafe_allow_html=True)
 
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
@@ -162,13 +173,25 @@ if st.session_state.page == "login":
 # ================= Upload =================
 if st.session_state.page == "upload":
     st.title("رفع البيانات")
-    file = st.file_uploader("رفع ملف Excel", type=["xlsx"])
-    if file:
+
+    excel_file = st.file_uploader("رفع ملف Excel", type=["xlsx"])
+    logo_file = st.file_uploader("رفع لوقو (PNG)", type=["png"])
+
+    st.session_state.logo_align = st.selectbox(
+        "محاذاة اللوقو في البار",
+        ["center", "right", "left"],
+        format_func=lambda x: "وسط" if x=="center" else "يمين" if x=="right" else "يسار"
+    )
+
+    if excel_file:
         with open(EXCEL_PATH, "wb") as f:
-            f.write(file.getbuffer())
-        st.success("تم رفع الملف بنجاح")
-        st.session_state.page = "home"
-        st.rerun()
+            f.write(excel_file.getbuffer())
+        st.success("تم رفع ملف البيانات")
+
+    if logo_file:
+        with open(LOGO_PATH, "wb") as f:
+            f.write(logo_file.getbuffer())
+        st.success("تم رفع اللوقو")
 
 # ================= Home =================
 if st.session_state.page == "home":
@@ -212,52 +235,24 @@ if st.session_state.page == "home":
     k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{pd.to_numeric(filtered['نسبة الصرف'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
     k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{pd.to_numeric(filtered['نسبة الإنجاز'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
 
-    # ===== Charts (منسقة ومتوازنة) =====
-    c1, c2 = st.columns(2)
+    # ===== شارت حالة المشاريع (ملون حسب الحالة) =====
+    st.subheader("حالة المشاريع")
 
-    with c1:
-        st.subheader("قيمة العقود حسب الجهة")
-        contracts_by_entity = (
-            filtered.assign(**{"قيمة العقد": pd.to_numeric(filtered["قيمة العقد"], errors="coerce")})
-            .groupby("الجهة", as_index=False)["قيمة العقد"]
-            .sum()
-            .sort_values("قيمة العقد", ascending=False)
+    status_color_map = {
+        "مكتمل": "#00a389",
+        "جاري": "#2c7be5",
+        "متأخر": "#e63946",
+        "متوقف": "#6c757d"
+    }
+
+    vc = filtered["حالة المشروع"].fillna("غير محدد").astype(str).value_counts()
+    status_df = vc.rename_axis("الحالة").reset_index(name="عدد المشاريع")
+
+    colored_df = pd.DataFrame()
+    for s in status_df["الحالة"]:
+        colored_df[s] = status_df.apply(
+            lambda r: r["عدد المشاريع"] if r["الحالة"] == s else 0,
+            axis=1
         )
-        st.bar_chart(contracts_by_entity.set_index("الجهة"), use_container_width=True)
 
-    with c2:
-        st.subheader("حالة المشاريع")
-        # ✅ إصلاح KeyError: ضمان وجود عمود اسمه "الحالة"
-        vc = filtered["حالة المشروع"].fillna("غير محدد").astype(str).value_counts()
-        status_counts = vc.rename_axis("الحالة").reset_index(name="عدد المشاريع")
-        status_counts = status_counts.sort_values("عدد المشاريع", ascending=False)
-
-        st.bar_chart(status_counts.set_index("الحالة"), use_container_width=True)
-
-    # ===== شارت إضافي: عدد المشاريع حسب البلدية =====
-    st.subheader("عدد المشاريع حسب البلدية")
-    vc_m = filtered["البلدية"].fillna("غير محدد").astype(str).value_counts()
-    municipality_counts = vc_m.rename_axis("البلدية").reset_index(name="عدد المشاريع")
-    municipality_counts = municipality_counts.sort_values("عدد المشاريع", ascending=False)
-
-    st.bar_chart(municipality_counts.set_index("البلدية"), use_container_width=True)
-
-    # ===== تحليل التأخير (بدون تغيير باقي الصفحة) =====
-    today = pd.Timestamp.today()
-    overdue = filtered[(filtered["تاريخ الانتهاء"] < today) & (~filtered["حالة المشروع"].isin(["مكتمل","منجز"]))]
-
-    risk = filtered[(filtered["تاريخ الانتهاء"] <= today + timedelta(days=30)) &
-                    (pd.to_numeric(filtered["نسبة الإنجاز"], errors="coerce") < 70)].copy()
-    risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
-
-    b1,b2 = st.columns(2)
-    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
-        st.session_state.show_overdue = not st.session_state.show_overdue
-    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
-        st.session_state.show_risk = not st.session_state.show_risk
-
-    if st.session_state.show_overdue:
-        st.dataframe(overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]], use_container_width=True)
-
-    if st.session_state.show_risk:
-        st.dataframe(risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","نسبة الإنجاز","سبب التوقع"]], use_container_width=True)
+    st.bar_chart(colored_df, use_container_width=True)
