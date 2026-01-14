@@ -1,4 +1,5 @@
 import streamlit as st
+from pathlib import Path
 
 # ------------------ إعدادات الصفحة ------------------
 st.set_page_config(
@@ -16,6 +17,11 @@ if "logged_in" not in st.session_state:
 # ------------------ بيانات الدخول (مؤقتة) ------------------
 VALID_USER = "admin"
 VALID_PASS = "1234"
+
+# ------------------ مسارات ------------------
+ASSETS_DIR = Path("assets")
+LOGO_PATH = ASSETS_DIR / "logo.png"
+ASSETS_DIR.mkdir(exist_ok=True)
 
 # ------------------ CSS الهوية ------------------
 st.markdown("""
@@ -38,12 +44,20 @@ st.markdown("""
         flex-direction: column;
         justify-content: center;
         align-items: center;
+        padding-top: 16px;
+    }
+
+    .brand-text {
+        color: white;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 12px;
     }
 
     .sidebar-title {
         color: white;
         font-size: 22px;
-        margin: 20px 0;
+        margin: 18px 0 26px 0;
         font-weight: 600;
     }
 
@@ -74,14 +88,22 @@ st.markdown("""
     h1 {
         color: var(--main-color);
     }
+
+    /* تنسيق اللوقو */
+    .logo-box img {
+        max-width: 120px;
+        border-radius: 12px;
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ------------------ البار الجانبي ------------------
 with st.sidebar:
-
-    # اللوقو
-    st.image("assets/logo.png", width=120)
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=120)
+    else:
+        st.markdown('<div class="brand-text">منصة PMO</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="sidebar-title">القائمة</div>', unsafe_allow_html=True)
 
@@ -107,7 +129,7 @@ if st.session_state.page == "home":
     st.write("منصة داخلية لإدارة ومتابعة بيانات المشاريع.")
     st.write("سيتم عرض المؤشرات ولوحات التحكم هنا.")
 
-# صفحة تسجيل الدخول
+# تسجيل الدخول
 elif st.session_state.page == "login":
     st.title("تسجيل الدخول")
 
@@ -122,12 +144,31 @@ elif st.session_state.page == "login":
         else:
             st.error("بيانات الدخول غير صحيحة")
 
-# صفحة رفع البيانات (مقفلة)
+# رفع البيانات + اللوقو
 elif st.session_state.page == "upload":
     if not st.session_state.logged_in:
         st.title("غير مصرح")
         st.warning("يجب تسجيل الدخول للوصول إلى هذه الصفحة")
     else:
         st.title("رفع البيانات")
-        st.write("ارفع ملفات البيانات لتحديث لوحة التحكم")
-        st.file_uploader("اختر ملف Excel", type=["xlsx"])
+
+        st.subheader("رفع ملف Excel")
+        excel_file = st.file_uploader("اختر ملف Excel", type=["xlsx"])
+
+        if excel_file:
+            st.success("تم رفع ملف Excel بنجاح")
+
+        st.divider()
+
+        st.subheader("رفع شعار الجهة")
+        logo_file = st.file_uploader(
+            "اختر صورة الشعار",
+            type=["png", "jpg", "jpeg"]
+        )
+
+        if logo_file:
+            with open(LOGO_PATH, "wb") as f:
+                f.write(logo_file.getbuffer())
+
+            st.success("تم حفظ الشعار بنجاح")
+            st.image(str(LOGO_PATH), width=120)
