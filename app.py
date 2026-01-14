@@ -218,7 +218,7 @@ if st.session_state.page == "home":
 
     with f2:
         if "الجهة" in filtered.columns:
-            ent = st.selectbox("الجهة", ["الكل"] + sorted(filtered["الجهة الرسمية"].dropna().unique()))
+            ent = st.selectbox("الجهة", ["الكل"] + sorted(filtered["الجهة"].dropna().unique()))
             if ent!="الكل": filtered = filtered[filtered["الجهة"]==ent]
 
     with f3:
