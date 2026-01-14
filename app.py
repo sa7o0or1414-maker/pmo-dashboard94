@@ -18,10 +18,10 @@ if "page" not in st.session_state:
     st.session_state.page = "home"
 if "logo_align" not in st.session_state:
     st.session_state.logo_align = "center"
-
-for k in ["show_overdue", "show_risk"]:
-    if k not in st.session_state:
-        st.session_state[k] = False
+if "show_overdue" not in st.session_state:
+    st.session_state.show_overdue = False
+if "show_risk" not in st.session_state:
+    st.session_state.show_risk = False
 
 # ================= بيانات الدخول =================
 ADMIN_USER = "admin"
@@ -65,13 +65,14 @@ section[data-testid="stSidebar"] .stButton {
 }
 section[data-testid="stSidebar"] .stButton > button {
     width: 78%;
-    height: 48px;
-    margin: 12px 0;
+    height: 40px;
+    margin: 10px 0;
+    padding: 6px 10px;
     background: #1f4f58;
-    border-radius: 16px;
+    border-radius: 14px;
     border: none;
     font-size: 14px;
-    white-space: nowrap;   /* ⭐ يمنع سطر ثاني */
+    white-space: nowrap;
 }
 section[data-testid="stSidebar"] .stButton > button:hover {
     background: #2b6772;
@@ -89,7 +90,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     font-size: 13px;
 }
 .card h2 {
-    font-size: 22px;
+    font-size: 20px;
     margin-top: 6px;
     white-space: nowrap;
 }
@@ -111,7 +112,6 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 def image_base64(path):
     return base64.b64encode(path.read_bytes()).decode()
 
-# ================= قراءة البيانات =================
 def load_data():
     if not EXCEL_PATH.exists():
         return None
@@ -134,16 +134,11 @@ def load_data():
 # ================= Sidebar =================
 with st.sidebar:
 
-    # ===== Logo =====
     if LOGO_PATH.exists():
-        align = st.session_state.logo_align
         b64 = image_base64(LOGO_PATH)
         st.markdown(
-            f"""
-            <div style="text-align:{align}; margin-bottom:12px;">
-                <img src="data:image/png;base64,{b64}" width="110">
-            </div>
-            """,
+            f"<div style='text-align:{st.session_state.logo_align}; margin-bottom:12px;'>"
+            f"<img src='data:image/png;base64,{b64}' width='110'></div>",
             unsafe_allow_html=True
         )
 
@@ -193,13 +188,11 @@ if st.session_state.page == "upload":
     )
 
     if excel_file:
-        with open(EXCEL_PATH, "wb") as f:
-            f.write(excel_file.getbuffer())
+        EXCEL_PATH.write_bytes(excel_file.getbuffer())
         st.success("تم رفع ملف البيانات")
 
     if logo_file:
-        with open(LOGO_PATH, "wb") as f:
-            f.write(logo_file.getbuffer())
+        LOGO_PATH.write_bytes(logo_file.getbuffer())
         st.success("تم رفع اللوقو")
 
 # ================= Home =================
@@ -244,34 +237,50 @@ if st.session_state.page == "home":
     k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{pd.to_numeric(filtered['نسبة الصرف'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
     k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{pd.to_numeric(filtered['نسبة الإنجاز'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
 
-    # ===== شارت حالة المشاريع (ملون) =====
+    # ===== شارت حالة المشاريع =====
     st.subheader("حالة المشاريع")
+    st.bar_chart(filtered["حالة المشروع"].value_counts(), use_container_width=True)
 
-    vc = filtered["حالة المشروع"].fillna("غير محدد").astype(str).value_counts()
-    status_df = vc.rename_axis("الحالة").reset_index(name="عدد المشاريع")
-
-    colored_df = pd.DataFrame()
-    for s in status_df["الحالة"]:
-        colored_df[s] = status_df.apply(
-            lambda r: r["عدد المشاريع"] if r["الحالة"] == s else 0,
-            axis=1
-        )
-
-    st.bar_chart(colored_df, use_container_width=True)
-
-    # ===== باقي الشارتات =====
+    # ===== شارتات سفلية بنفس المستوى =====
     c1, c2 = st.columns(2)
 
     with c1:
-        st.subheader("قيمة العقود حسب الجهة")
-        st.bar_chart(
-            filtered.groupby("الجهة")["قيمة العقد"].sum(),
-            use_container_width=True
-        )
+        st.markdown("<div style='height:420px;'>", unsafe_allow_html=True)
+        st.subheader("عدد المشاريع حسب البلدية")
+        st.bar_chart(filtered["البلدية"].value_counts(), use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with c2:
-        st.subheader("عدد المشاريع حسب البلدية")
-        st.bar_chart(
-            filtered["البلدية"].value_counts(),
-            use_container_width=True
-        )
+        st.markdown("<div style='height:420px;'>", unsafe_allow_html=True)
+        st.subheader("قيمة العقود حسب الجهة")
+        st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum(), use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ===== تحليل التأخير =====
+    today = pd.Timestamp.today()
+
+    overdue = filtered[
+        (filtered["تاريخ الانتهاء"] < today) &
+        (~filtered["حالة المشروع"].isin(["مكتمل","منجز"]))
+    ]
+
+    risk = filtered[
+        (filtered["تاريخ الانتهاء"] <= today + timedelta(days=30)) &
+        (pd.to_numeric(filtered["نسبة الإنجاز"], errors="coerce") < 70)
+    ].copy()
+
+    risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
+
+    b1, b2 = st.columns(2)
+
+    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
+        st.session_state.show_overdue = not st.session_state.show_overdue
+
+    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
+        st.session_state.show_risk = not st.session_state.show_risk
+
+    if st.session_state.show_overdue:
+        st.dataframe(overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]], use_container_width=True)
+
+    if st.session_state.show_risk:
+        st.dataframe(risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","سبب التوقع"]], use_container_width=True)
