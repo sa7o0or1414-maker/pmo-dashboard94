@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import timedelta
 import base64
 
-# Altair غالباً موجود مع Streamlit
+# Altair
 try:
     import altair as alt
     ALTAIR_OK = True
@@ -68,7 +68,6 @@ section[data-testid="stSidebar"] .stButton {
     justify-content: center;
 }
 section[data-testid="stSidebar"] .stButton > button {
-    width: auto;
     padding: 10px 26px;
     margin: 10px auto;
     background: rgba(255,255,255,0.14);
@@ -77,10 +76,6 @@ section[data-testid="stSidebar"] .stButton > button {
     font-size: 14px;
     white-space: nowrap;
     box-shadow: 0 6px 18px rgba(0,0,0,0.18);
-}
-section[data-testid="stSidebar"] .stButton > button:hover {
-    background: rgba(255,255,255,0.25);
-    transform: scale(1.03);
 }
 
 /* Cards */
@@ -116,58 +111,34 @@ def load_data():
         "قيمة المستخلصات المعتمده": "قيمة المستخلصات",
     }, inplace=True)
 
-    # تواريخ
-    if "تاريخ الانتهاء" in df.columns:
-        df["تاريخ الانتهاء"] = pd.to_datetime(df["تاريخ الانتهاء"], errors="coerce")
-    if "تاريخ التسليم" in df.columns:
-        df["تاريخ التسليم"] = pd.to_datetime(df["تاريخ التسليم"], errors="coerce")
+    for c in ["تاريخ الانتهاء","تاريخ التسليم"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
 
-    # أرقام
-    for c in ["قيمة العقد", "قيمة المستخلصات", "المتبقي من المستخلص", "نسبة الصرف", "نسبة الإنجاز"]:
+    for c in ["قيمة العقد","قيمة المستخلصات","المتبقي من المستخلص","نسبة الصرف","نسبة الإنجاز"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
     return df
 
-def status_color(status_text: str) -> str:
-    """تلوين ذكي حسب الكلمات داخل الحالة (يدعم أي تسميات جديدة)"""
-    s = (status_text or "").strip()
-
-    # أحمر: تأخر/تعثر
-    if any(k in s for k in ["متأخر", "تأخر", "متعثر", "تعثّر", "متعثّر", "حرج", "خطير"]):
-        return "#e63946"
-
-    # أخضر: مكتمل/منجز/مستلم
-    if any(k in s for k in ["مكتمل", "منجز", "مستلم", "تم الاستلام", "مغلق", "إغلاق"]):
-        return "#00a389"
-
-    # أزرق: جاري/قيد التنفيذ/تحت
-    if any(k in s for k in ["جاري", "قيد", "تحت", "تنفيذ", "الاستلام", "استلام"]):
-        return "#2c7be5"
-
-    # رمادي: متوقف
-    if any(k in s for k in ["متوقف", "موقوف", "إيقاف", "مجمّد", "مجمد"]):
-        return "#6c757d"
-
-    # برتقالي: افتراضي/غير محدد
-    if s == "" or any(k in s for k in ["غير", "بدون", "محدد", "غير محدد"]):
-        return "#f4a261"
-
+def status_color(txt):
+    s = (txt or "").strip()
+    if any(k in s for k in ["متأخر","متعثر"]): return "#e63946"
+    if any(k in s for k in ["مكتمل","منجز"]): return "#00a389"
+    if any(k in s for k in ["جاري","قيد"]): return "#2c7be5"
+    if any(k in s for k in ["متوقف"]): return "#6c757d"
     return "#f4a261"
 
-def build_status_df(filtered: pd.DataFrame) -> pd.DataFrame:
-    s = filtered.get("حالة المشروع")
-    if s is None:
-        return pd.DataFrame({"الحالة": ["غير محدد"], "عدد": [0], "لون": ["#f4a261"]})
-
-    counts = s.fillna("غير محدد").astype(str).value_counts()
-    df_status = counts.rename_axis("الحالة").reset_index(name="عدد")
-    df_status["لون"] = df_status["الحالة"].apply(status_color)
-    return df_status
+def build_status_df(filtered):
+    if "حالة المشروع" not in filtered.columns:
+        return pd.DataFrame({"الحالة":["غير محدد"],"عدد":[0],"لون":["#f4a261"]})
+    s = filtered["حالة المشروع"].fillna("غير محدد").astype(str)
+    df = s.value_counts().rename_axis("الحالة").reset_index(name="عدد")
+    df["لون"] = df["الحالة"].apply(status_color)
+    return df
 
 # ================= Sidebar =================
 with st.sidebar:
-    # اللوقو فقط بدون نصوص
     if LOGO_PATH.exists():
         st.markdown(
             f"<div style='text-align:{st.session_state.logo_align}; margin-bottom:20px;'>"
@@ -208,7 +179,7 @@ if st.session_state.page == "upload":
     st.title("رفع البيانات")
     excel = st.file_uploader("ملف Excel", ["xlsx"])
     logo = st.file_uploader("لوقو PNG", ["png"])
-    st.session_state.logo_align = st.selectbox("محاذاة اللوقو", ["center", "right", "left"])
+    st.session_state.logo_align = st.selectbox("محاذاة اللوقو", ["center","right","left"])
 
     if excel:
         EXCEL_PATH.write_bytes(excel.getbuffer())
@@ -222,176 +193,73 @@ if st.session_state.page == "home":
     st.title("لوحة التحكم")
     df = load_data()
     if df is None:
-        st.warning("يرجى رفع ملف Excel من صفحة رفع البيانات")
+        st.warning("يرجى رفع ملف Excel")
         st.stop()
 
-    # ===== Cascading Filters (مترابطة) =====
-filtered = df.copy()
+    # ===== Cascading Filters =====
+    filtered = df.copy()
+    f1,f2,f3 = st.columns(3)
+    f4,f5 = st.columns(2)
 
-f1, f2, f3 = st.columns(3)
-f4, f5 = st.columns(2)
+    with f4:
+        if "حالة المشروع" in filtered.columns:
+            status = st.selectbox("حالة المشروع", ["الكل"] + sorted(filtered["حالة المشروع"].dropna().unique()))
+            if status!="الكل": filtered = filtered[filtered["حالة المشروع"]==status]
 
-# حالة المشروع أولاً (أكثر تأثيرًا)
-with f4:
-    if "حالة المشروع" in filtered.columns:
-        status = st.selectbox(
-            "حالة المشروع",
-            ["الكل"] + sorted(filtered["حالة المشروع"].dropna().astype(str).unique())
-        )
-        if status != "الكل":
-            filtered = filtered[filtered["حالة المشروع"] == status]
-    else:
-        status = "الكل"
+    with f5:
+        if "نوع العقد" in filtered.columns:
+            ctype = st.selectbox("نوع العقد", ["الكل"] + sorted(filtered["نوع العقد"].dropna().unique()))
+            if ctype!="الكل": filtered = filtered[filtered["نوع العقد"]==ctype]
 
-# نوع العقد
-with f5:
-    if "نوع العقد" in filtered.columns:
-        ctype = st.selectbox(
-            "نوع العقد",
-            ["الكل"] + sorted(filtered["نوع العقد"].dropna().astype(str).unique())
-        )
-        if ctype != "الكل":
-            filtered = filtered[filtered["نوع العقد"] == ctype]
-    else:
-        ctype = "الكل"
+    with f1:
+        if "التصنيف" in filtered.columns:
+            cat = st.selectbox("التصنيف", ["الكل"] + sorted(filtered["التصنيف"].dropna().unique()))
+            if cat!="الكل": filtered = filtered[filtered["التصنيف"]==cat]
 
-# التصنيف
-with f1:
-    if "التصنيف" in filtered.columns:
-        cat = st.selectbox(
-            "التصنيف",
-            ["الكل"] + sorted(filtered["التصنيف"].dropna().astype(str).unique())
-        )
-        if cat != "الكل":
-            filtered = filtered[filtered["التصنيف"] == cat]
-    else:
-        cat = "الكل"
+    with f2:
+        if "الجهة" in filtered.columns:
+            ent = st.selectbox("الجهة", ["الكل"] + sorted(filtered["الجهة"].dropna().unique()))
+            if ent!="الكل": filtered = filtered[filtered["الجهة"]==ent]
 
-# الجهة
-with f2:
-    if "الجهة" in filtered.columns:
-        ent = st.selectbox(
-            "الجهة",
-            ["الكل"] + sorted(filtered["الجهة"].dropna().astype(str).unique())
-        )
-        if ent != "الكل":
-            filtered = filtered[filtered["الجهة"] == ent]
-    else:
-        ent = "الكل"
-
-# البلدية
-with f3:
-    if "البلدية" in filtered.columns:
-        mun = st.selectbox(
-            "البلدية",
-            ["الكل"] + sorted(filtered["البلدية"].dropna().astype(str).unique())
-        )
-        if mun != "الكل":
-            filtered = filtered[filtered["البلدية"] == mun]
-    else:
-        mun = "الكل"
+    with f3:
+        if "البلدية" in filtered.columns:
+            mun = st.selectbox("البلدية", ["الكل"] + sorted(filtered["البلدية"].dropna().unique()))
+            if mun!="الكل": filtered = filtered[filtered["البلدية"]==mun]
 
     # ===== KPI =====
     k1,k2,k3,k4,k5,k6 = st.columns(6)
-
     k1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
+    k2.markdown(f"<div class='card green'><h2>{filtered['قيمة العقد'].sum():,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
+    k3.markdown(f"<div class='card gray'><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
+    k4.markdown(f"<div class='card orange'><h2>{filtered['المتبقي من المستخلص'].sum():,.0f}</h2>المتبقي</div>", unsafe_allow_html=True)
+    k5.markdown(f"<div class='card blue'><h2>{filtered['نسبة الصرف'].mean():.1f}%</h2>متوسط الصرف</div>", unsafe_allow_html=True)
+    k6.markdown(f"<div class='card green'><h2>{filtered['نسبة الإنجاز'].mean():.1f}%</h2>متوسط الإنجاز</div>", unsafe_allow_html=True)
 
-    v_contract = filtered["قيمة العقد"].sum(skipna=True) if "قيمة العقد" in filtered.columns else 0
-    v_claims = filtered["قيمة المستخلصات"].sum(skipna=True) if "قيمة المستخلصات" in filtered.columns else 0
-    v_remain = filtered["المتبقي من المستخلص"].sum(skipna=True) if "المتبقي من المستخلص" in filtered.columns else 0
-    avg_spend = filtered["نسبة الصرف"].mean(skipna=True) if "نسبة الصرف" in filtered.columns else 0
-    avg_prog = filtered["نسبة الإنجاز"].mean(skipna=True) if "نسبة الإنجاز" in filtered.columns else 0
-
-    k2.markdown(f"<div class='card green'><h2>{v_contract:,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
-    k3.markdown(f"<div class='card gray'><h2>{v_claims:,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
-    k4.markdown(f"<div class='card orange'><h2>{v_remain:,.0f}</h2>المتبقي</div>", unsafe_allow_html=True)
-    k5.markdown(f"<div class='card blue'><h2>{(avg_spend or 0):.1f}%</h2>متوسط الصرف</div>", unsafe_allow_html=True)
-    k6.markdown(f"<div class='card green'><h2>{(avg_prog or 0):.1f}%</h2>متوسط الإنجاز</div>", unsafe_allow_html=True)
-
-    # ===== حالة المشاريع (أفقي + كل الحالات ملونة) =====
+    # ===== حالة المشاريع =====
     st.subheader("حالة المشاريع")
-    status_df = build_status_df(filtered)
+    sdf = build_status_df(filtered)
 
     if ALTAIR_OK:
-        # Domain & Range من البيانات نفسها لضمان تلون كل حالة
-        domain = status_df["الحالة"].tolist()
-        range_colors = status_df["لون"].tolist()
-
-        chart = alt.Chart(status_df).mark_bar().encode(
-            x=alt.X("عدد:Q", title=""),
-            y=alt.Y("الحالة:N", sort="-x", title=""),
-            color=alt.Color(
-                "الحالة:N",
-                scale=alt.Scale(domain=domain, range=range_colors),
-                legend=alt.Legend(title="")
-            ),
-            tooltip=["الحالة:N", "عدد:Q"]
+        chart = alt.Chart(sdf).mark_bar().encode(
+            x=alt.X("عدد:Q"),
+            y=alt.Y("الحالة:N", sort="-x"),
+            color=alt.Color("الحالة:N", scale=alt.Scale(domain=sdf["الحالة"].tolist(), range=sdf["لون"].tolist())),
+            tooltip=["الحالة","عدد"]
         ).properties(height=260)
         st.altair_chart(chart, use_container_width=True)
-    else:
-        # fallback
-        st.bar_chart(status_df.set_index("الحالة")[["عدد"]], use_container_width=True)
 
     # ===== شارتين جنب بعض =====
-    c1, c2 = st.columns(2)
+    c1,c2 = st.columns(2)
     with c1:
         st.subheader("عدد المشاريع حسب البلدية")
-        if "البلدية" in filtered.columns:
-            st.bar_chart(filtered["البلدية"].value_counts(), use_container_width=True)
-        else:
-            st.info("عمود البلدية غير موجود في الملف")
-
+        st.bar_chart(filtered["البلدية"].value_counts())
     with c2:
         st.subheader("قيمة العقود حسب الجهة")
-        if "الجهة" in filtered.columns and "قيمة العقد" in filtered.columns:
-            st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum(), use_container_width=True)
-        else:
-            st.info("تأكد من وجود أعمدة الجهة + قيمة العقد")
+        st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum())
 
-    # ===== أيقونات التأخير =====
-    today = pd.Timestamp.today()
-
-    overdue = pd.DataFrame()
-    if "تاريخ الانتهاء" in filtered.columns and "حالة المشروع" in filtered.columns:
-        overdue = filtered[
-            (filtered["تاريخ الانتهاء"] < today) &
-            (~filtered["حالة المشروع"].astype(str).isin(["مكتمل", "منجز"]))
-        ]
-
-    risk = pd.DataFrame()
-    if "تاريخ الانتهاء" in filtered.columns and "نسبة الإنجاز" in filtered.columns:
-        risk = filtered[
-            (filtered["تاريخ الانتهاء"] <= today + timedelta(days=30)) &
-            (pd.to_numeric(filtered["نسبة الإنجاز"], errors="coerce") < 70)
-        ].copy()
-        if not risk.empty:
-            risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
-
-    b1, b2 = st.columns(2)
-    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
-        st.session_state.show_overdue = not st.session_state.show_overdue
-    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
-        st.session_state.show_risk = not st.session_state.show_risk
-
-    if st.session_state.show_overdue and not overdue.empty:
-        cols = [c for c in ["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"] if c in overdue.columns]
-        st.dataframe(overdue[cols], use_container_width=True)
-
-    if st.session_state.show_risk and not risk.empty:
-        cols = [c for c in ["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","سبب التوقع"] if c in risk.columns]
-        st.dataframe(risk[cols], use_container_width=True)
-
-    # ===== جدول تفصيلي (يعكس الفلاتر) =====
+    # ===== جدول تفصيلي =====
     st.markdown("---")
     st.subheader("تفاصيل المشاريع")
-    cols = [
-        "اسم المشروع","الجهة","البلدية","المقاول","حالة المشروع",
-        "تاريخ التسليم","تاريخ الانتهاء","قيمة العقد","نسبة الإنجاز","نسبة الصرف"
-    ]
+    cols = ["اسم المشروع","الجهة","البلدية","المقاول","حالة المشروع","تاريخ الانتهاء","قيمة العقد"]
     cols = [c for c in cols if c in filtered.columns]
-    view = filtered[cols].copy()
-
-    if "تاريخ الانتهاء" in view.columns:
-        view = view.sort_values("تاريخ الانتهاء")
-
-    st.dataframe(view, use_container_width=True, hide_index=True)
+    st.dataframe(filtered[cols], use_container_width=True)
