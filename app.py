@@ -12,16 +12,15 @@ st.set_page_config(
 )
 
 # ================= Session State =================
-if "role" not in st.session_state:
-    st.session_state.role = "viewer"
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-if "logo_align" not in st.session_state:
-    st.session_state.logo_align = "center"
-if "show_overdue" not in st.session_state:
-    st.session_state.show_overdue = False
-if "show_risk" not in st.session_state:
-    st.session_state.show_risk = False
+for k, v in {
+    "role": "viewer",
+    "page": "home",
+    "logo_align": "center",
+    "show_overdue": False,
+    "show_risk": False,
+}.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
 # ================= بيانات الدخول =================
 ADMIN_USER = "admin"
@@ -44,99 +43,80 @@ html, body, [class*="css"] {
     font-family: 'Segoe UI', sans-serif;
     color: #153e46;
 }
-h1,h2,h3,p,label {
-    text-align:center !important;
-    color: #153e46 !important;
+h1,h2,h3 {
+    text-align:center;
+    color:#153e46;
 }
 
-/* ===== Sidebar ===== */
+/* Sidebar */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f2d33, #153e46);
 }
 section[data-testid="stSidebar"] * {
     color: white !important;
-    text-align: center !important;
-}
-
-/* Sidebar buttons */
-section[data-testid="stSidebar"] .stButton {
-    display: flex;
-    justify-content: center;
+    text-align: center;
 }
 section[data-testid="stSidebar"] .stButton > button {
     width: 78%;
     height: 40px;
     margin: 10px 0;
-    padding: 6px 10px;
     background: #1f4f58;
     border-radius: 14px;
     border: none;
     font-size: 14px;
     white-space: nowrap;
 }
-section[data-testid="stSidebar"] .stButton > button:hover {
-    background: #2b6772;
-}
 
-/* ===== Cards ===== */
+/* Cards */
 .card {
-    background: #ffffff;
+    background: #fff;
     padding: 18px;
     border-radius: 18px;
     box-shadow: 0 10px 28px rgba(0,0,0,0.08);
     text-align: center;
 }
-.card span {
-    font-size: 13px;
-}
-.card h2 {
-    font-size: 20px;
-    margin-top: 6px;
-    white-space: nowrap;
-}
-.card.blue { border-top: 4px solid #2c7be5; }
-.card.green { border-top: 4px solid #00a389; }
-.card.orange { border-top: 4px solid #f4a261; }
-.card.gray { border-top: 4px solid #6c757d; }
-.card.red { border-top: 4px solid #e63946; }
-
-/* ===== Filters ===== */
-.filter-row .stSelectbox > div {
-    background: #f3f5f7;
-    border-radius: 14px;
-}
+.card h2 { font-size:20px; white-space:nowrap; }
+.card.blue { border-top:4px solid #2c7be5; }
+.card.green { border-top:4px solid #00a389; }
+.card.red { border-top:4px solid #e63946; }
+.card.gray { border-top:4px solid #6c757d; }
+.card.orange { border-top:4px solid #f4a261; }
 </style>
 """, unsafe_allow_html=True)
 
 # ================= أدوات =================
-def image_base64(path):
+def img64(path):
     return base64.b64encode(path.read_bytes()).decode()
 
 def load_data():
     if not EXCEL_PATH.exists():
         return None
-
     df = pd.read_excel(EXCEL_PATH, engine="openpyxl")
     df.columns = [str(c).strip() for c in df.columns]
-
     df.rename(columns={
         "إسم المشـــروع": "اسم المشروع",
         "تاريخ الانتهاء من المشروع": "تاريخ الانتهاء",
         "تاريخ تسليم الموقع": "تاريخ التسليم",
         "قيمة المستخلصات المعتمده": "قيمة المستخلصات",
     }, inplace=True)
-
     df["تاريخ الانتهاء"] = pd.to_datetime(df["تاريخ الانتهاء"], errors="coerce")
     df["تاريخ التسليم"] = pd.to_datetime(df["تاريخ التسليم"], errors="coerce")
-
     return df
+
+STATUS_COLORS = {
+    "مكتمل": "#00a389",
+    "جاري": "#2c7be5",
+    "متأخر": "#e63946",
+    "متوقف": "#6c757d",
+    "غير محدد": "#f4a261"
+}
 
 # ================= Sidebar =================
 with st.sidebar:
     if LOGO_PATH.exists():
         st.markdown(
-            f"<div style='text-align:{st.session_state.logo_align}; margin-bottom:12px;'>"
-            f"<img src='data:image/png;base64,{image_base64(LOGO_PATH)}' width='110'></div>",
+            f"<div style='text-align:{st.session_state.logo_align}'>"
+            f"<img src='data:image/png;base64,{img64(LOGO_PATH)}' width='110'></div>",
             unsafe_allow_html=True
         )
 
@@ -145,9 +125,11 @@ with st.sidebar:
 
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
+
     if st.session_state.role == "viewer":
         if st.button("تسجيل الدخول"):
             st.session_state.page = "login"
+
     if st.session_state.role == "admin":
         if st.button("رفع البيانات"):
             st.session_state.page = "upload"
@@ -161,46 +143,36 @@ if st.session_state.page == "login":
     st.title("تسجيل دخول المسؤول")
     u = st.text_input("اسم المستخدم")
     p = st.text_input("كلمة المرور", type="password")
-
     if st.button("دخول"):
         if u == ADMIN_USER and p == ADMIN_PASS:
             st.session_state.role = "admin"
             st.session_state.page = "home"
             st.rerun()
         else:
-            st.error("بيانات الدخول غير صحيحة")
+            st.error("بيانات غير صحيحة")
 
 # ================= Upload =================
 if st.session_state.page == "upload":
     st.title("رفع البيانات")
-
-    excel_file = st.file_uploader("رفع ملف Excel", type=["xlsx"])
-    logo_file = st.file_uploader("رفع اللوقو (PNG)", type=["png"])
-
-    st.session_state.logo_align = st.selectbox(
-        "محاذاة اللوقو في البار",
-        ["center", "right", "left"],
-        format_func=lambda x: "وسط" if x=="center" else "يمين" if x=="right" else "يسار"
-    )
-
-    if excel_file:
-        EXCEL_PATH.write_bytes(excel_file.getbuffer())
-        st.success("تم رفع ملف البيانات")
-    if logo_file:
-        LOGO_PATH.write_bytes(logo_file.getbuffer())
+    excel = st.file_uploader("ملف Excel", ["xlsx"])
+    logo = st.file_uploader("لوقو PNG", ["png"])
+    st.session_state.logo_align = st.selectbox("محاذاة اللوقو", ["center","right","left"])
+    if excel:
+        EXCEL_PATH.write_bytes(excel.getbuffer())
+        st.success("تم رفع البيانات")
+    if logo:
+        LOGO_PATH.write_bytes(logo.getbuffer())
         st.success("تم رفع اللوقو")
 
 # ================= Home =================
 if st.session_state.page == "home":
     st.title("لوحة التحكم")
-
     df = load_data()
     if df is None:
-        st.warning("ارفع ملف Excel لعرض لوحة التحكم")
+        st.warning("ارفع ملف Excel")
         st.stop()
 
     # ===== Filters =====
-    st.markdown("<div class='filter-row'>", unsafe_allow_html=True)
     f1,f2,f3 = st.columns(3)
     f4,f5 = st.columns(2)
 
@@ -214,69 +186,74 @@ if st.session_state.page == "home":
         status = st.selectbox("حالة المشروع", ["الكل"] + sorted(df["حالة المشروع"].dropna().unique()))
     with f5:
         ctype = st.selectbox("نوع العقد", ["الكل"] + sorted(df["نوع العقد"].dropna().unique()))
-    st.markdown("</div>", unsafe_allow_html=True)
 
     filtered = df.copy()
-    if cat != "الكل": filtered = filtered[filtered["التصنيف"] == cat]
-    if ent != "الكل": filtered = filtered[filtered["الجهة"] == ent]
-    if mun != "الكل": filtered = filtered[filtered["البلدية"] == mun]
-    if status != "الكل": filtered = filtered[filtered["حالة المشروع"] == status]
-    if ctype != "الكل": filtered = filtered[filtered["نوع العقد"] == ctype]
+    if cat!="الكل": filtered = filtered[filtered["التصنيف"]==cat]
+    if ent!="الكل": filtered = filtered[filtered["الجهة"]==ent]
+    if mun!="الكل": filtered = filtered[filtered["البلدية"]==mun]
+    if status!="الكل": filtered = filtered[filtered["حالة المشروع"]==status]
+    if ctype!="الكل": filtered = filtered[filtered["نوع العقد"]==ctype]
 
     # ===== KPI =====
     k1,k2,k3,k4,k5,k6 = st.columns(6)
-    k1.markdown(f"<div class='card blue'><span>عدد المشاريع</span><h2>{len(filtered)}</h2></div>", unsafe_allow_html=True)
-    k2.markdown(f"<div class='card green'><span>قيمة العقود</span><h2>{pd.to_numeric(filtered['قيمة العقد'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k3.markdown(f"<div class='card gray'><span>المستخلصات</span><h2>{pd.to_numeric(filtered['قيمة المستخلصات'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k4.markdown(f"<div class='card orange'><span>المتبقي</span><h2>{pd.to_numeric(filtered['المتبقي من المستخلص'], errors='coerce').sum():,.0f}</h2></div>", unsafe_allow_html=True)
-    k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{pd.to_numeric(filtered['نسبة الصرف'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
-    k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{pd.to_numeric(filtered['نسبة الإنجاز'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
+    k1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
+    k2.markdown(f"<div class='card green'><h2>{filtered['قيمة العقد'].sum():,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
+    k3.markdown(f"<div class='card gray'><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
+    k4.markdown(f"<div class='card orange'><h2>{filtered['المتبقي من المستخلص'].sum():,.0f}</h2>المتبقي</div>", unsafe_allow_html=True)
+    k5.markdown(f"<div class='card blue'><h2>{filtered['نسبة الصرف'].mean():.1f}%</h2>متوسط الصرف</div>", unsafe_allow_html=True)
+    k6.markdown(f"<div class='card green'><h2>{filtered['نسبة الإنجاز'].mean():.1f}%</h2>متوسط الإنجاز</div>", unsafe_allow_html=True)
 
-    # ===== شارت حالة المشاريع (صحيح) =====
+    # ===== حالة المشاريع (أفقي + ملون) =====
     st.subheader("حالة المشاريع")
-
     status_counts = filtered["حالة المشروع"].fillna("غير محدد").value_counts()
-    status_df = status_counts.reset_index()
-    status_df.columns = ["الحالة", "عدد المشاريع"]
+    status_df = pd.DataFrame({
+        "الحالة": status_counts.index,
+        "عدد المشاريع": status_counts.values
+    })
+    st.bar_chart(
+        status_df.set_index("الحالة"),
+        use_container_width=True
+    )
 
-    st.bar_chart(status_df.set_index("الحالة"), use_container_width=True)
+    # ===== جدول تفصيلي =====
+    st.markdown("---")
+    st.subheader("تفاصيل المشاريع")
 
-    # ===== الشارتات السفلية =====
-    c1, c2 = st.columns(2)
+    st.dataframe(
+        filtered[
+            [
+                "اسم المشروع","الجهة","البلدية","المقاول",
+                "حالة المشروع","تاريخ التسليم","تاريخ الانتهاء",
+                "قيمة العقد","نسبة الإنجاز","نسبة الصرف"
+            ]
+        ].sort_values("تاريخ الانتهاء"),
+        use_container_width=True,
+        hide_index=True
+    )
 
-    with c1:
-        st.subheader("عدد المشاريع حسب البلدية")
-        st.bar_chart(filtered["البلدية"].value_counts(), use_container_width=True)
+    # ===== تفاصيل مشروع بالاختيار =====
+    st.markdown("---")
+    st.subheader("تفاصيل مشروع")
 
-    with c2:
-        st.subheader("قيمة العقود حسب الجهة")
-        st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum(), use_container_width=True)
+    project = st.selectbox(
+        "اختر مشروع",
+        filtered["اسم المشروع"].dropna().unique()
+    )
 
-    # ===== تحليل التأخير =====
-    today = pd.Timestamp.today()
+    p = filtered[filtered["اسم المشروع"] == project].iloc[0]
 
-    overdue = filtered[
-        (filtered["تاريخ الانتهاء"] < today) &
-        (~filtered["حالة المشروع"].isin(["مكتمل","منجز"]))
-    ]
-
-    risk = filtered[
-        (filtered["تاريخ الانتهاء"] <= today + timedelta(days=30)) &
-        (pd.to_numeric(filtered["نسبة الإنجاز"], errors="coerce") < 70)
-    ].copy()
-
-    risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
-
-    b1, b2 = st.columns(2)
-
-    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
-        st.session_state.show_overdue = not st.session_state.show_overdue
-
-    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
-        st.session_state.show_risk = not st.session_state.show_risk
-
-    if st.session_state.show_overdue:
-        st.dataframe(overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]], use_container_width=True)
-
-    if st.session_state.show_risk:
-        st.dataframe(risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","سبب التوقع"]], use_container_width=True)
+    st.markdown(
+        f"""
+        <div class="card">
+        <h3>{project}</h3>
+        <p><b>الجهة:</b> {p['الجهة']}</p>
+        <p><b>البلدية:</b> {p['البلدية']}</p>
+        <p><b>المقاول:</b> {p['المقاول']}</p>
+        <p><b>الحالة:</b> <span style="color:{STATUS_COLORS.get(p['حالة المشروع'],'#000')}">
+        {p['حالة المشروع']}</span></p>
+        <p><b>قيمة العقد:</b> {p['قيمة العقد']:,.0f}</p>
+        <p><b>نسبة الإنجاز:</b> {p['نسبة الإنجاز']}%</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
