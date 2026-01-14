@@ -44,28 +44,47 @@ html, body, [class*="css"] {
     font-family: 'Segoe UI', sans-serif;
     color: #153e46;
 }
-h1,h2,h3 { text-align:center; color:#153e46; }
+h1,h2,h3 {
+    text-align:center;
+    color:#153e46;
+}
 
-/* Sidebar */
+/* ============ Sidebar ============ */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f2d33, #153e46);
+    padding-top: 20px;
 }
+
 section[data-testid="stSidebar"] * {
     color: white !important;
     text-align: center;
 }
-section[data-testid="stSidebar"] .stButton > button {
-    width: 78%;
-    height: 40px;
-    margin: 10px 0;
-    background: #1f4f58;
-    border-radius: 14px;
-    border: none;
-    font-size: 14px;
-    white-space: nowrap;
+
+/* Sidebar Buttons */
+section[data-testid="stSidebar"] .stButton {
+    display: flex;
+    justify-content: center;
 }
 
-/* Cards */
+section[data-testid="stSidebar"] .stButton > button {
+    width: auto;
+    padding: 10px 28px;
+    margin: 12px auto;
+    background: rgba(255,255,255,0.14);
+    border-radius: 18px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(255,255,255,0.25);
+    transform: scale(1.03);
+}
+
+/* ============ Cards ============ */
 .card {
     background: #fff;
     padding: 18px;
@@ -73,7 +92,10 @@ section[data-testid="stSidebar"] .stButton > button {
     box-shadow: 0 10px 28px rgba(0,0,0,0.08);
     text-align: center;
 }
-.card h2 { font-size:20px; white-space:nowrap; }
+.card h2 {
+    font-size: 20px;
+    white-space: nowrap;
+}
 .card.blue { border-top:4px solid #2c7be5; }
 .card.green { border-top:4px solid #00a389; }
 .card.red { border-top:4px solid #e63946; }
@@ -103,21 +125,22 @@ def load_data():
 
 # ================= Sidebar =================
 with st.sidebar:
+
+    # اللوقو فقط (بدون نص)
     if LOGO_PATH.exists():
         st.markdown(
-            f"<div style='text-align:{st.session_state.logo_align}'>"
-            f"<img src='data:image/png;base64,{img64(LOGO_PATH)}' width='110'></div>",
+            f"<div style='text-align:{st.session_state.logo_align}; margin-bottom:20px;'>"
+            f"<img src='data:image/png;base64,{img64(LOGO_PATH)}' width='120'></div>",
             unsafe_allow_html=True
         )
 
-    st.markdown("## PMO")
-    st.markdown("مكتب إدارة المشاريع")
-
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
+
     if st.session_state.role == "viewer":
         if st.button("تسجيل الدخول"):
             st.session_state.page = "login"
+
     if st.session_state.role == "admin":
         if st.button("رفع البيانات"):
             st.session_state.page = "upload"
@@ -144,20 +167,22 @@ if st.session_state.page == "upload":
     st.title("رفع البيانات")
     excel = st.file_uploader("ملف Excel", ["xlsx"])
     logo = st.file_uploader("لوقو PNG", ["png"])
-    st.session_state.logo_align = st.selectbox("محاذاة اللوقو", ["center","right","left"])
+    st.session_state.logo_align = st.selectbox(
+        "محاذاة اللوقو", ["center", "right", "left"]
+    )
     if excel:
         EXCEL_PATH.write_bytes(excel.getbuffer())
-        st.success("تم رفع البيانات")
+        st.success("تم رفع البيانات بنجاح")
     if logo:
         LOGO_PATH.write_bytes(logo.getbuffer())
-        st.success("تم رفع اللوقو")
+        st.success("تم رفع اللوقو بنجاح")
 
 # ================= Home =================
 if st.session_state.page == "home":
     st.title("لوحة التحكم")
     df = load_data()
     if df is None:
-        st.warning("ارفع ملف Excel")
+        st.warning("يرجى رفع ملف Excel من صفحة رفع البيانات")
         st.stop()
 
     # ===== Filters =====
