@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 from datetime import timedelta
+import base64
 
 # ================= إعدادات الصفحة =================
 st.set_page_config(
@@ -35,7 +36,7 @@ ASSETS_DIR.mkdir(exist_ok=True)
 EXCEL_PATH = DATA_DIR / "data.xlsx"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 
-# ================= CSS (البار + لون الخط) =================
+# ================= CSS =================
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -69,7 +70,8 @@ section[data-testid="stSidebar"] .stButton > button {
     background: #1f4f58;
     border-radius: 16px;
     border: none;
-    font-size: 15px;
+    font-size: 14px;
+    white-space: nowrap;   /* ⭐ يمنع سطر ثاني */
 }
 section[data-testid="stSidebar"] .stButton > button:hover {
     background: #2b6772;
@@ -105,6 +107,10 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 </style>
 """, unsafe_allow_html=True)
 
+# ================= أدوات =================
+def image_base64(path):
+    return base64.b64encode(path.read_bytes()).decode()
+
 # ================= قراءة البيانات =================
 def load_data():
     if not EXCEL_PATH.exists():
@@ -131,10 +137,13 @@ with st.sidebar:
     # ===== Logo =====
     if LOGO_PATH.exists():
         align = st.session_state.logo_align
+        b64 = image_base64(LOGO_PATH)
         st.markdown(
-            f"<div style='text-align:{'center' if align=='center' else 'right' if align=='right' else 'left'};'>"
-            f"<img src='data:image/png;base64,{LOGO_PATH.read_bytes().hex()}' width='120'>"
-            f"</div>",
+            f"""
+            <div style="text-align:{align}; margin-bottom:12px;">
+                <img src="data:image/png;base64,{b64}" width="110">
+            </div>
+            """,
             unsafe_allow_html=True
         )
 
@@ -175,7 +184,7 @@ if st.session_state.page == "upload":
     st.title("رفع البيانات")
 
     excel_file = st.file_uploader("رفع ملف Excel", type=["xlsx"])
-    logo_file = st.file_uploader("رفع لوقو (PNG)", type=["png"])
+    logo_file = st.file_uploader("رفع اللوقو (PNG)", type=["png"])
 
     st.session_state.logo_align = st.selectbox(
         "محاذاة اللوقو في البار",
@@ -235,15 +244,8 @@ if st.session_state.page == "home":
     k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{pd.to_numeric(filtered['نسبة الصرف'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
     k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{pd.to_numeric(filtered['نسبة الإنجاز'], errors='coerce').mean():.1f}%</h2></div>", unsafe_allow_html=True)
 
-    # ===== شارت حالة المشاريع (ملون حسب الحالة) =====
+    # ===== شارت حالة المشاريع (ملون) =====
     st.subheader("حالة المشاريع")
-
-    status_color_map = {
-        "مكتمل": "#00a389",
-        "جاري": "#2c7be5",
-        "متأخر": "#e63946",
-        "متوقف": "#6c757d"
-    }
 
     vc = filtered["حالة المشروع"].fillna("غير محدد").astype(str).value_counts()
     status_df = vc.rename_axis("الحالة").reset_index(name="عدد المشاريع")
@@ -256,3 +258,20 @@ if st.session_state.page == "home":
         )
 
     st.bar_chart(colored_df, use_container_width=True)
+
+    # ===== باقي الشارتات =====
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.subheader("قيمة العقود حسب الجهة")
+        st.bar_chart(
+            filtered.groupby("الجهة")["قيمة العقد"].sum(),
+            use_container_width=True
+        )
+
+    with c2:
+        st.subheader("عدد المشاريع حسب البلدية")
+        st.bar_chart(
+            filtered["البلدية"].value_counts(),
+            use_container_width=True
+        )
