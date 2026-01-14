@@ -28,7 +28,7 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 EXCEL_PATH = DATA_DIR / "data.xlsx"
 
-# ================= CSS (Sidebar احترافي + سنترة كاملة) =================
+# ================= CSS (Sidebar نظيف بدون نصوص عائمة) =================
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -45,14 +45,14 @@ section[data-testid="stSidebar"] {
 }
 section[data-testid="stSidebar"] > div {
     width: 100%;
-    padding-top: 36px;
+    padding-top: 40px;
 }
 section[data-testid="stSidebar"] * {
     color: white !important;
     text-align: center !important;
 }
 
-/* ===== Sidebar buttons (زر = عنصر واحد) ===== */
+/* زر = عنصر واحد فقط */
 section[data-testid="stSidebar"] .stButton {
     display: flex;
     justify-content: center;
@@ -60,23 +60,18 @@ section[data-testid="stSidebar"] .stButton {
 section[data-testid="stSidebar"] .stButton > button {
     width: 72%;
     height: 46px;
-    margin: 14px 0;
-
-    background: rgba(255,255,255,0.12);
+    margin: 12px 0;
+    background: rgba(255,255,255,0.14);
     border-radius: 999px;
     border: 1px solid rgba(255,255,255,0.25);
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     font-size: 14px;
-    font-weight: 500;
     white-space: nowrap;
-    line-height: 1;
 }
 section[data-testid="stSidebar"] .stButton > button:hover {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.28);
 }
 
 /* ===== Cards ===== */
@@ -99,7 +94,6 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 .card.blue { border-top: 4px solid #2c7be5; }
 .card.green { border-top: 4px solid #00a389; }
 .card.orange { border-top: 4px solid #f4a261; }
-.card.red { border-top: 4px solid #e63946; }
 .card.gray { border-top: 4px solid #6c757d; }
 
 /* ===== Filters ===== */
@@ -130,7 +124,7 @@ def load_data():
 
     return df
 
-# ================= Sidebar (نظيف – سنتر) =================
+# ================= Sidebar (بدون أي نص زائد) =================
 with st.sidebar:
     st.markdown("## PMO")
     st.markdown("مكتب إدارة المشاريع")
@@ -146,14 +140,12 @@ with st.sidebar:
     if st.session_state.role == "admin":
         if st.button("رفع البيانات"):
             st.session_state.page = "upload"
-
         if st.button("تسجيل خروج"):
             st.session_state.role = "viewer"
             st.session_state.page = "home"
             st.rerun()
 
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.caption("لوحة تحكم PMO")
 
 # ================= Login =================
 if st.session_state.page == "login":
@@ -222,31 +214,17 @@ if st.session_state.page == "home":
     k5.markdown(f"<div class='card blue'><span>متوسط الصرف</span><h2>{filtered['نسبة الصرف'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
     k6.markdown(f"<div class='card green'><span>متوسط الإنجاز</span><h2>{filtered['نسبة الإنجاز'].mean():.1f}%</h2></div>", unsafe_allow_html=True)
 
-    # ===== Chart: حالة المشروع (ملوّن حسب الحالة) =====
-    st.subheader("حالة المشاريع")
+    # ===== Charts (شارتين جنب بعض) =====
+    c1, c2 = st.columns(2)
 
-    status_colors = {
-        "مكتمل": "#00a389",
-        "جاري": "#2c7be5",
-        "متأخر": "#e63946",
-        "متوقف": "#6c757d"
-    }
+    with c1:
+        st.subheader("حالة المشاريع")
+        status_counts = filtered["حالة المشروع"].value_counts()
+        st.bar_chart(status_counts)
 
-    status_counts = filtered["حالة المشروع"].value_counts()
-    chart_df = pd.DataFrame({
-        "الحالة": status_counts.index,
-        "عدد المشاريع": status_counts.values
-    })
-
-    # نفصل كل حالة في عمود عشان Streamlit يلوّنها
-    colored_df = pd.DataFrame()
-    for s in chart_df["الحالة"]:
-        colored_df[s] = chart_df.apply(
-            lambda r: r["عدد المشاريع"] if r["الحالة"] == s else 0,
-            axis=1
-        )
-
-    st.bar_chart(colored_df)
+    with c2:
+        st.subheader("قيمة العقود حسب الجهة")
+        st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum())
 
     # ===== Delay Analysis =====
     today = pd.Timestamp.today()
