@@ -2,20 +2,20 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-# ---------------- إعدادات الصفحة ----------------
+# ================= إعدادات الصفحة =================
 st.set_page_config(page_title="منصة PMO", layout="wide")
 
-# ---------------- الحالة ----------------
+# ================= الحالة =================
 if "page" not in st.session_state:
     st.session_state.page = "home"
 if "role" not in st.session_state:
     st.session_state.role = "viewer"
 
-# ---------------- بيانات المسؤول ----------------
+# ================= بيانات المسؤول =================
 ADMIN_USER = "admin"
 ADMIN_PASS = "1234"
 
-# ---------------- المسارات ----------------
+# ================= المسارات =================
 BASE_DIR = Path(".")
 DATA_DIR = BASE_DIR / "data"
 ASSETS_DIR = BASE_DIR / "assets"
@@ -25,7 +25,7 @@ ASSETS_DIR.mkdir(exist_ok=True)
 EXCEL_PATH = DATA_DIR / "data.xlsx"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 
-# ---------------- CSS مختصر ----------------
+# ================= CSS (سنترة + هوية) =================
 st.markdown("""
 <style>
 html,body,[class*="css"]{
@@ -53,22 +53,36 @@ box-shadow:0 8px 25px rgba(0,0,0,.08);width:100%
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- دالة قراءة البيانات ----------------
+# ================= دالة قراءة Excel (نسخة قوية) =================
 def load_data():
     if not EXCEL_PATH.exists():
         return None
 
+    # المحاولة 1: قراءة مباشرة
     try:
-        xls = pd.ExcelFile(EXCEL_PATH)
-        sheet = "Data" if "Data" in xls.sheet_names else xls.sheet_names[0]
-        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet)
+        df = pd.read_excel(EXCEL_PATH, engine="openpyxl")
+        df.columns = [str(c).strip() for c in df.columns]
+        return df
+    except Exception:
+        pass
+
+    # المحاولة 2: قراءة أول Sheet يدويًا
+    try:
+        xls = pd.ExcelFile(EXCEL_PATH, engine="openpyxl")
+        sheet = xls.sheet_names[0]
+        df = pd.read_excel(EXCEL_PATH, sheet_name=sheet, engine="openpyxl")
         df.columns = [str(c).strip() for c in df.columns]
         return df
     except Exception as e:
-        st.error(f"خطأ في قراءة ملف Excel: {e}")
+        st.error("تعذر قراءة ملف Excel بسبب تنسيق غير سليم.")
+        st.info(
+            "الرجاء إعادة حفظ الملف بصيغة Excel (.xlsx) من Microsoft Excel "
+            "ثم إعادة رفعه."
+        )
+        st.code(str(e))
         return None
 
-# ---------------- Sidebar ----------------
+# ================= Sidebar =================
 with st.sidebar:
     if LOGO_PATH.exists():
         st.image(str(LOGO_PATH), width=120)
@@ -91,7 +105,7 @@ with st.sidebar:
             st.session_state.page = "home"
             st.rerun()
 
-# ---------------- تسجيل الدخول ----------------
+# ================= تسجيل الدخول =================
 if st.session_state.page == "login":
     st.title("تسجيل دخول المسؤول")
 
@@ -107,7 +121,7 @@ if st.session_state.page == "login":
         else:
             st.error("بيانات الدخول غير صحيحة")
 
-# ---------------- رفع البيانات ----------------
+# ================= رفع البيانات =================
 if st.session_state.page == "upload":
     if st.session_state.role != "admin":
         st.warning("غير مصرح لك بالوصول")
@@ -121,7 +135,7 @@ if st.session_state.page == "upload":
 
             st.success("تم رفع الملف بنجاح")
             st.session_state.page = "home"
-            st.rerun()  # 🔴 المفتاح
+            st.rerun()
 
         st.divider()
 
@@ -132,11 +146,11 @@ if st.session_state.page == "upload":
             st.success("تم حفظ الشعار")
             st.rerun()
 
-# ---------------- الصفحة الرئيسية ----------------
+# ================= الصفحة الرئيسية =================
 if st.session_state.page == "home":
     st.title("لوحة التحكم")
 
-    df = load_data()   # 🔴 القراءة هنا فقط
+    df = load_data()
 
     if df is None:
         st.warning("لا توجد بيانات بعد. ارفع ملف Excel من صفحة رفع البيانات.")
@@ -148,19 +162,22 @@ if st.session_state.page == "home":
         with col1:
             st.markdown(
                 f"<div class='card'>عدد المشاريع<br><h2>{len(df)}</h2></div>",
-                unsafe_allow_html=True)
+                unsafe_allow_html=True
+            )
 
         with col2:
             total_contract = pd.to_numeric(df.get("قيمة العقد", 0), errors="coerce").sum()
             st.markdown(
                 f"<div class='card'>إجمالي قيمة العقود<br><h2>{total_contract:,.0f}</h2></div>",
-                unsafe_allow_html=True)
+                unsafe_allow_html=True
+            )
 
         with col3:
             avg_spend = pd.to_numeric(df.get("نسبة الصرف", 0), errors="coerce").mean()
             st.markdown(
                 f"<div class='card'>متوسط نسبة الصرف<br><h2>{avg_spend:.1f}%</h2></div>",
-                unsafe_allow_html=True)
+                unsafe_allow_html=True
+            )
 
         st.divider()
         st.dataframe(df, use_container_width=True)
