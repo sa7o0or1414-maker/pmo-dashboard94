@@ -12,13 +12,14 @@ st.set_page_config(
 )
 
 # ================= Session State =================
-for k, v in {
+defaults = {
     "role": "viewer",
     "page": "home",
     "logo_align": "center",
     "show_overdue": False,
-    "show_risk": False,
-}.items():
+    "show_risk": False
+}
+for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
@@ -43,10 +44,7 @@ html, body, [class*="css"] {
     font-family: 'Segoe UI', sans-serif;
     color: #153e46;
 }
-h1,h2,h3 {
-    text-align:center;
-    color:#153e46;
-}
+h1,h2,h3 { text-align:center; color:#153e46; }
 
 /* Sidebar */
 section[data-testid="stSidebar"] {
@@ -103,14 +101,6 @@ def load_data():
     df["تاريخ التسليم"] = pd.to_datetime(df["تاريخ التسليم"], errors="coerce")
     return df
 
-STATUS_COLORS = {
-    "مكتمل": "#00a389",
-    "جاري": "#2c7be5",
-    "متأخر": "#e63946",
-    "متوقف": "#6c757d",
-    "غير محدد": "#f4a261"
-}
-
 # ================= Sidebar =================
 with st.sidebar:
     if LOGO_PATH.exists():
@@ -125,11 +115,9 @@ with st.sidebar:
 
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
-
     if st.session_state.role == "viewer":
         if st.button("تسجيل الدخول"):
             st.session_state.page = "login"
-
     if st.session_state.role == "admin":
         if st.button("رفع البيانات"):
             st.session_state.page = "upload"
@@ -203,57 +191,50 @@ if st.session_state.page == "home":
     k5.markdown(f"<div class='card blue'><h2>{filtered['نسبة الصرف'].mean():.1f}%</h2>متوسط الصرف</div>", unsafe_allow_html=True)
     k6.markdown(f"<div class='card green'><h2>{filtered['نسبة الإنجاز'].mean():.1f}%</h2>متوسط الإنجاز</div>", unsafe_allow_html=True)
 
-    # ===== حالة المشاريع (أفقي + ملون) =====
+    # ===== حالة المشاريع =====
     st.subheader("حالة المشاريع")
-    status_counts = filtered["حالة المشروع"].fillna("غير محدد").value_counts()
-    status_df = pd.DataFrame({
-        "الحالة": status_counts.index,
-        "عدد المشاريع": status_counts.values
-    })
-    st.bar_chart(
-        status_df.set_index("الحالة"),
-        use_container_width=True
-    )
+    st.bar_chart(filtered["حالة المشروع"].value_counts(), use_container_width=True)
+
+    # ===== شارتين جنب بعض =====
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("عدد المشاريع حسب البلدية")
+        st.bar_chart(filtered["البلدية"].value_counts(), use_container_width=True)
+    with c2:
+        st.subheader("قيمة العقود حسب الجهة")
+        st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum(), use_container_width=True)
+
+    # ===== أيقونات التأخير =====
+    today = pd.Timestamp.today()
+    overdue = filtered[
+        (filtered["تاريخ الانتهاء"] < today) &
+        (~filtered["حالة المشروع"].isin(["مكتمل","منجز"]))
+    ]
+    risk = filtered[
+        (filtered["تاريخ الانتهاء"] <= today + timedelta(days=30)) &
+        (pd.to_numeric(filtered["نسبة الإنجاز"], errors="coerce") < 70)
+    ].copy()
+    risk["سبب التوقع"] = "قرب تاريخ الانتهاء مع انخفاض نسبة الإنجاز"
+
+    b1, b2 = st.columns(2)
+    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
+        st.session_state.show_overdue = not st.session_state.show_overdue
+    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
+        st.session_state.show_risk = not st.session_state.show_risk
+
+    if st.session_state.show_overdue:
+        st.dataframe(overdue[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","حالة المشروع"]], use_container_width=True)
+    if st.session_state.show_risk:
+        st.dataframe(risk[["اسم المشروع","المقاول","رقم العقد","تاريخ الانتهاء","سبب التوقع"]], use_container_width=True)
 
     # ===== جدول تفصيلي =====
     st.markdown("---")
     st.subheader("تفاصيل المشاريع")
-
     st.dataframe(
         filtered[
-            [
-                "اسم المشروع","الجهة","البلدية","المقاول",
-                "حالة المشروع","تاريخ التسليم","تاريخ الانتهاء",
-                "قيمة العقد","نسبة الإنجاز","نسبة الصرف"
-            ]
+            ["اسم المشروع","الجهة","البلدية","المقاول","حالة المشروع",
+             "تاريخ التسليم","تاريخ الانتهاء","قيمة العقد","نسبة الإنجاز","نسبة الصرف"]
         ].sort_values("تاريخ الانتهاء"),
         use_container_width=True,
         hide_index=True
-    )
-
-    # ===== تفاصيل مشروع بالاختيار =====
-    st.markdown("---")
-    st.subheader("تفاصيل مشروع")
-
-    project = st.selectbox(
-        "اختر مشروع",
-        filtered["اسم المشروع"].dropna().unique()
-    )
-
-    p = filtered[filtered["اسم المشروع"] == project].iloc[0]
-
-    st.markdown(
-        f"""
-        <div class="card">
-        <h3>{project}</h3>
-        <p><b>الجهة:</b> {p['الجهة']}</p>
-        <p><b>البلدية:</b> {p['البلدية']}</p>
-        <p><b>المقاول:</b> {p['المقاول']}</p>
-        <p><b>الحالة:</b> <span style="color:{STATUS_COLORS.get(p['حالة المشروع'],'#000')}">
-        {p['حالة المشروع']}</span></p>
-        <p><b>قيمة العقد:</b> {p['قيمة العقد']:,.0f}</p>
-        <p><b>نسبة الإنجاز:</b> {p['نسبة الإنجاز']}%</p>
-        </div>
-        """,
-        unsafe_allow_html=True
     )
