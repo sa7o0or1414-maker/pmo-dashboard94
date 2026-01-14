@@ -225,15 +225,24 @@ if st.session_state.page == "home":
             mun = st.selectbox("البلدية", ["الكل"] + sorted(filtered["البلدية"].dropna().unique()))
             if mun!="الكل": filtered = filtered[filtered["البلدية"]==mun]
 
-    # ===== KPI (معدلة) =====
+    # ===== KPI =====
     k1,k2,k3,k4,k5,k6 = st.columns(6)
 
-    total_contract = filtered["قيمة العقد"].sum(skipna=True) if "قيمة العقد" in filtered.columns else 0
-    total_claims = filtered["قيمة المستخلصات"].sum(skipna=True) if "قيمة المستخلصات" in filtered.columns else 0
-    total_remain = filtered["المتبقي من المستخلص"].sum(skipna=True) if "المتبقي من المستخلص" in filtered.columns else 0
+    total_contract = filtered["قيمة العقد"].sum(skipna=True)
+    total_claims = filtered["قيمة المستخلصات"].sum(skipna=True)
+    total_remain = filtered["المتبقي من المستخلص"].sum(skipna=True)
 
     spend_ratio = (total_claims / total_contract * 100) if total_contract > 0 else 0
-    progress_ratio = filtered["نسبة الإنجاز"].mean(skipna=True) if "نسبة الإنجاز" in filtered.columns else 0
+
+    # 🔹 نسبة الإنجاز المرجّحة (بدون متوسط)
+    progress_ratio = 0
+    if "قيمة العقد" in filtered.columns and "نسبة الإنجاز" in filtered.columns:
+        weighted = filtered.dropna(subset=["قيمة العقد","نسبة الإنجاز"])
+        if not weighted.empty and weighted["قيمة العقد"].sum() > 0:
+            progress_ratio = (
+                (weighted["قيمة العقد"] * weighted["نسبة الإنجاز"]).sum()
+                / weighted["قيمة العقد"].sum()
+            )
 
     k1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
     k2.markdown(f"<div class='card green'><h2>{total_contract:,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
@@ -257,15 +266,6 @@ if st.session_state.page == "home":
             tooltip=["الحالة","عدد"]
         ).properties(height=260)
         st.altair_chart(chart, use_container_width=True)
-
-    # ===== شارتين جنب بعض =====
-    c1,c2 = st.columns(2)
-    with c1:
-        st.subheader("عدد المشاريع حسب البلدية")
-        st.bar_chart(filtered["البلدية"].value_counts())
-    with c2:
-        st.subheader("قيمة العقود حسب الجهة")
-        st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum())
 
     # ===== المشاريع المتأخرة والمتوقع تأخرها =====
     st.markdown("### تنبيهات المشاريع")
