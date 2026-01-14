@@ -11,7 +11,6 @@ try:
 except Exception:
     ALTAIR_OK = False
 
-
 # ================= إعدادات الصفحة =================
 st.set_page_config(
     page_title="لوحة التحكم | PMO",
@@ -226,54 +225,22 @@ if st.session_state.page == "home":
             mun = st.selectbox("البلدية", ["الكل"] + sorted(filtered["البلدية"].dropna().unique()))
             if mun!="الكل": filtered = filtered[filtered["البلدية"]==mun]
 
-    # ===== KPI =====
+    # ===== KPI (معدلة) =====
     k1,k2,k3,k4,k5,k6 = st.columns(6)
+
+    total_contract = filtered["قيمة العقد"].sum(skipna=True) if "قيمة العقد" in filtered.columns else 0
+    total_claims = filtered["قيمة المستخلصات"].sum(skipna=True) if "قيمة المستخلصات" in filtered.columns else 0
+    total_remain = filtered["المتبقي من المستخلص"].sum(skipna=True) if "المتبقي من المستخلص" in filtered.columns else 0
+
+    spend_ratio = (total_claims / total_contract * 100) if total_contract > 0 else 0
+    progress_ratio = filtered["نسبة الإنجاز"].mean(skipna=True) if "نسبة الإنجاز" in filtered.columns else 0
+
     k1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
-    k2.markdown(f"<div class='card green'><h2>{filtered['قيمة العقد'].sum():,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
-    k3.markdown(f"<div class='card gray'><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
-    k4.markdown(f"<div class='card orange'><h2>{filtered['المتبقي من المستخلص'].sum():,.0f}</h2>المتبقي</div>", unsafe_allow_html=True)
-  # ===== KPI =====
-k1,k2,k3,k4,k5,k6 = st.columns(6)
-
-k1.markdown(
-    f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>",
-    unsafe_allow_html=True
-)
-
-total_contract = filtered["قيمة العقد"].sum(skipna=True) if "قيمة العقد" in filtered.columns else 0
-total_claims = filtered["قيمة المستخلصات"].sum(skipna=True) if "قيمة المستخلصات" in filtered.columns else 0
-total_remain = filtered["المتبقي من المستخلص"].sum(skipna=True) if "المتبقي من المستخلص" in filtered.columns else 0
-
-# نسبة الصرف = إجمالي المستخلصات / إجمالي العقود
-spend_ratio = (total_claims / total_contract * 100) if total_contract > 0 else 0
-
-# نسبة الإنجاز (القيمة الحالية من البيانات)
-progress_ratio = filtered["نسبة الإنجاز"].mean(skipna=True) if "نسبة الإنجاز" in filtered.columns else 0
-
-k2.markdown(
-    f"<div class='card green'><h2>{total_contract:,.0f}</h2>قيمة العقود</div>",
-    unsafe_allow_html=True
-)
-
-k3.markdown(
-    f"<div class='card gray'><h2>{total_claims:,.0f}</h2>المستخلصات</div>",
-    unsafe_allow_html=True
-)
-
-k4.markdown(
-    f"<div class='card orange'><h2>{total_remain:,.0f}</h2>المتبقي</div>",
-    unsafe_allow_html=True
-)
-
-k5.markdown(
-    f"<div class='card blue'><h2>{spend_ratio:.1f}%</h2>نسبة الصرف</div>",
-    unsafe_allow_html=True
-)
-
-k6.markdown(
-    f"<div class='card green'><h2>{progress_ratio:.1f}%</h2>نسبة الإنجاز</div>",
-    unsafe_allow_html=True
-)
+    k2.markdown(f"<div class='card green'><h2>{total_contract:,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
+    k3.markdown(f"<div class='card gray'><h2>{total_claims:,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
+    k4.markdown(f"<div class='card orange'><h2>{total_remain:,.0f}</h2>المتبقي</div>", unsafe_allow_html=True)
+    k5.markdown(f"<div class='card blue'><h2>{spend_ratio:.1f}%</h2>نسبة الصرف</div>", unsafe_allow_html=True)
+    k6.markdown(f"<div class='card green'><h2>{progress_ratio:.1f}%</h2>نسبة الإنجاز</div>", unsafe_allow_html=True)
 
     # ===== حالة المشاريع =====
     st.subheader("حالة المشاريع")
@@ -283,7 +250,8 @@ k6.markdown(
         chart = alt.Chart(sdf).mark_bar().encode(
             x=alt.X("عدد:Q"),
             y=alt.Y("الحالة:N", sort="-x"),
-            color=alt.Color("الحالة:N",
+            color=alt.Color(
+                "الحالة:N",
                 scale=alt.Scale(domain=sdf["الحالة"].tolist(), range=sdf["لون"].tolist())
             ),
             tooltip=["الحالة","عدد"]
@@ -302,11 +270,9 @@ k6.markdown(
     # ===== المشاريع المتأخرة والمتوقع تأخرها =====
     st.markdown("### تنبيهات المشاريع")
 
-    overdue = pd.DataFrame()
-    if "حالة المشروع" in filtered.columns:
-        overdue = filtered[
-            filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", regex=True)
-        ]
+    overdue = filtered[
+        filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", regex=True)
+    ] if "حالة المشروع" in filtered.columns else pd.DataFrame()
 
     risk = pd.DataFrame()
     if "تاريخ الانتهاء" in filtered.columns and "نسبة الإنجاز" in filtered.columns:
