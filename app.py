@@ -174,15 +174,57 @@ if st.session_state.page == "login":
 
 # ================= Upload =================
 if st.session_state.page == "upload":
-    st.title("رفع البيانات")
-    excel = st.file_uploader("ملف Excel", ["xlsx"])
-    logo = st.file_uploader("اللوقو", ["png"])
-    if excel:
-        EXCEL_PATH.write_bytes(excel.getbuffer())
-        st.success("تم رفع البيانات")
-    if logo:
-        LOGO_PATH.write_bytes(logo.getbuffer())
-        st.success("تم رفع اللوقو")
+    st.title("رفع الملفات حسب نوع المشاريع")
+    for name, file in DATA_FILES.items():
+        if name == "الافتراضي":
+            continue
+        with st.expander(name):
+            up = st.file_uploader(name, type=["xlsx"], key=file)
+            if up:
+                (DATA_DIR / file).write_bytes(up.getbuffer())
+                st.success("تم رفع الملف")
+    st.stop()
+
+# ================= Home =================
+st.title("لوحة المعلومات")
+
+# ===== Top Buttons =====
+items = list(DATA_FILES.keys())
+items.remove("الافتراضي")
+
+r1 = st.columns(5)
+for i, name in enumerate(items[:5]):
+    with r1[i]:
+        active = "selected" if st.session_state.top_nav == name else ""
+        st.markdown(f"<div class='topbar-btn {active}'>", unsafe_allow_html=True)
+        if st.button(name, key=f"top_{name}"):
+            st.session_state.top_nav = name
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+r2 = st.columns(5)
+for i, name in enumerate(items[5:]):
+    with r2[i]:
+        active = "selected" if st.session_state.top_nav == name else ""
+        st.markdown(f"<div class='topbar-btn {active}'>", unsafe_allow_html=True)
+        if st.button(name, key=f"top2_{name}"):
+            st.session_state.top_nav = name
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+
+st.caption(f"📊 التحليل الحالي: {st.session_state.top_nav}")
+
+df = load_data()
+if df is None:
+    st.warning("لا يوجد ملف لهذا القسم")
+    st.stop()
+# ================= تحليل خاص بمشاريع بهجة =================
+if st.session_state.top_nav == "مشاريع بهجة":
+
+    st.subheader("تحليل مشاريع بهجة")
+
+
 
 # ================= Home =================
 if st.session_state.page == "home":
