@@ -426,7 +426,6 @@ if progress_col:
         unsafe_allow_html=True
     )
 
-      # ---------- كارد المشاريع المكتملة ----------
 # ================= كارد المشاريع المكتملة (من عمود إكسل) =================
 completed_projects = 0
 
@@ -441,7 +440,6 @@ if "المشاريع المكتملة" in filtered.columns:
 else:
     st.warning("⚠️ عمود (المشاريع المكتملة) غير موجود في ملف الإكسل")
 
-
     if progress_col:
         completed_projects = filtered[
             pd.to_numeric(filtered[progress_col], errors="coerce") >= 100
@@ -452,23 +450,27 @@ st.markdown(
 
     )
 
-    # ---------- الشارتات ----------
+        # ---------- الشارتات ----------
     ch1, ch2 = st.columns(2)
 
     with ch1:
         st.subheader("حالة المشروع")
-        st.bar_chart(filtered["حالة المشروع"].value_counts())
+        if "حالة المشروع" in filtered.columns:
+            st.bar_chart(filtered["حالة المشروع"].astype(str).value_counts())
+        else:
+            st.warning("عمود حالة المشروع غير موجود")
 
     with ch2:
-        st.subheader("المستهدف")
-        st.bar_chart(filtered["المستهدف"].value_counts())
-
-    # ---------- جدول ----------
-    st.markdown("---")
-    st.subheader("تفاصيل مشاريع بهجة")
-    st.dataframe(filtered, use_container_width=True)
-
-    st.stop()  # ⛔ يمنع تنفيذ بقية الداشبورد العام
+        st.subheader("المستهدف مقابل الإنجاز")
+        cols_needed = ["اسم المشروع", "المستهدف", "نسبة الانجاز"]
+        if all(c in filtered.columns for c in cols_needed):
+            tmp = filtered[cols_needed].copy()
+            tmp["المستهدف"] = pd.to_numeric(tmp["المستهدف"], errors="coerce")
+            tmp["نسبة الانجاز"] = pd.to_numeric(tmp["نسبة الانجاز"], errors="coerce")
+            tmp = tmp.dropna(subset=["اسم المشروع"]).set_index("اسم المشروع")
+            st.bar_chart(tmp[["المستهدف", "نسبة الانجاز"]])
+        else:
+            st.warning("أعمدة المستهدف/نسبة الانجاز/اسم المشروع غير موجودة في الملف")
 
 # ================= الفلاتر (مُعادة كما طلبت) =================
 filtered = df.copy()
