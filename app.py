@@ -398,7 +398,17 @@ if st.session_state.top_nav == "مشاريع بهجة":
     c1, c2, c3 = st.columns(3)
 
     total_cost = filtered["التكلفة"].sum()
-    avg_progress = filtered["نسبة الانجاز"].mean()
+# دعم الاسمين: نسبة الإنجاز / نسبة الانجاز
+progress_col = None
+if "نسبة الإنجاز" in filtered.columns:
+    progress_col = "نسبة الإنجاز"
+elif "نسبة الانجاز" in filtered.columns:
+    progress_col = "نسبة الانجاز"
+
+avg_progress = 0
+if progress_col:
+    avg_progress = pd.to_numeric(filtered[progress_col], errors="coerce").mean()
+
     projects_count = len(filtered)
 
     c1.markdown(
