@@ -50,48 +50,36 @@ DATA_FILES = {
 # ================= CSS =================
 st.markdown("""
 <style>
-html, body { direction: rtl; font-family: 'Segoe UI'; }
+html, body, [class*="css"] {
+    direction: rtl;
+    font-family: 'Segoe UI', sans-serif;
+}
 h1 { text-align:center; }
-
-section[data-testid="stSidebar"] {
-    background:#1e5055;
-}
-section[data-testid="stSidebar"] * {
-    color:white;
-}
-
-.topbar-btn button {
-    background:#1e5055 !important;
-    color:white !important;
-    border:1px solid rgba(255,255,255,.3) !important;
-    min-width:160px;
-    height:44px;
-    border-radius:14px;
-}
-.topbar-btn button:hover {
-    background:#24666c !important;
-}
 
 .card {
     background:#fff;
     padding:18px;
     border-radius:18px;
-    box-shadow:0 10px 28px rgba(0,0,0,.08);
+    box-shadow:0 10px 28px rgba(0,0,0,0.08);
     text-align:center;
-    height:140px;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
+    min-height:140px;
 }
-.card h2 {
-    font-size:22px;
-    margin:0;
-    white-space:nowrap;
-}
+.card h2 { font-size:22px; margin-bottom:6px; }
 .card.blue { border-top:4px solid #2c7be5; }
 .card.green { border-top:4px solid #00a389; }
 .card.orange { border-top:4px solid #f4a261; }
 .card.gray { border-top:4px solid #6c757d; }
+
+.topbar-btn button{
+    background:#1e5055 !important;
+    color:#fff !important;
+    border-radius:14px !important;
+    min-width:160px;
+    height:44px;
+}
+.topbar-btn button:hover{
+    background:#24666c !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -111,7 +99,7 @@ def load_data():
         "تاريخ الانتهاء من المشروع": "تاريخ الانتهاء",
     }, inplace=True)
 
-    for c in ["قيمة العقد","قيمة المستخلصات","المتبقي من المستخلص","نسبة الإنجاز"]:
+    for c in ["قيمة العقد","قيمة المستخلصات","نسبة الإنجاز","نسبة الانجاز","التكلفة"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
@@ -183,6 +171,7 @@ if st.session_state.page == "upload":
 # ================= Home =================
 st.title("لوحة المعلومات")
 
+# ===== Top Buttons =====
 items = list(DATA_FILES.keys())
 items.remove("الافتراضي")
 
@@ -207,65 +196,84 @@ if df is None:
     st.warning("لا يوجد ملف لهذا القسم")
     st.stop()
 
-# ================= تحليل بهجة (كما هو) =================
+# ================= تحليل مشاريع بهجة فقط =================
 if st.session_state.top_nav == "مشاريع بهجة":
+
     st.subheader("تحليل مشاريع بهجة")
-    st.dataframe(df, use_container_width=True)
+
+    f1,f2,f3,f4 = st.columns(4)
+
+    with f1:
+        mun = st.selectbox("البلدية", ["الكل"] + sorted(df["البلدية"].dropna().unique()))
+    with f2:
+        project = st.selectbox("اسم المشروع", ["الكل"] + sorted(df["اسم المشروع"].dropna().unique()))
+    with f3:
+        ptype = st.selectbox("نوع المشروع", ["الكل"] + sorted(df["نوع المشروع"].dropna().unique()))
+    with f4:
+        approval = st.selectbox("حالة الاعتماد", ["الكل"] + sorted(df["حالة الاعتماد"].dropna().unique()))
+
+    filtered = df.copy()
+    if mun != "الكل": filtered = filtered[filtered["البلدية"] == mun]
+    if project != "الكل": filtered = filtered[filtered["اسم المشروع"] == project]
+    if ptype != "الكل": filtered = filtered[filtered["نوع المشروع"] == ptype]
+    if approval != "الكل": filtered = filtered[filtered["حالة الاعتماد"] == approval]
+
+    c1,c2,c3 = st.columns(3)
+
+    total_cost = filtered["التكلفة"].sum()
+
+    progress_col = "نسبة الإنجاز" if "نسبة الإنجاز" in filtered.columns else "نسبة الانجاز"
+    avg_progress = pd.to_numeric(filtered[progress_col], errors="coerce").mean()
+    completed = (pd.to_numeric(filtered[progress_col], errors="coerce") >= 100).sum()
+
+    c1.markdown(f"<div class='card green'><h2>{total_cost:,.0f}</h2>إجمالي التكلفة</div>", unsafe_allow_html=True)
+    c2.markdown(f"<div class='card blue'><h2>{completed}</h2>المشاريع المكتملة</div>", unsafe_allow_html=True)
+    c3.markdown(f"<div class='card orange'><h2>{avg_progress:.1f}%</h2>نسبة الإنجاز</div>", unsafe_allow_html=True)
+
+    ch1,ch2 = st.columns(2)
+    with ch1:
+        st.subheader("المستهدف")
+        st.bar_chart(filtered["المستهدف"].value_counts())
+    with ch2:
+        st.subheader("حالة المشروع")
+        st.bar_chart(filtered["حالة المشروع"].value_counts())
+
+    st.markdown("---")
+    st.subheader("تفاصيل مشاريع بهجة")
+    st.dataframe(filtered, use_container_width=True)
     st.stop()
 
-# ================= تحليل الباب الثالث والرابع =================
+# ================= باقي الصفحات (الباب الثالث والرابع وغيرها) =================
+
 filtered = df.copy()
 
-# ===== الفلاتر =====
 f1,f2,f3,f4,f5 = st.columns(5)
-
 with f1:
-    if "التصنيف" in filtered.columns:
-        v = st.selectbox("التصنيف", ["الكل"] + sorted(filtered["التصنيف"].dropna().unique()))
-        if v != "الكل": filtered = filtered[filtered["التصنيف"] == v]
-
-with f2:
-    if "الجهة" in filtered.columns:
-        v = st.selectbox("الجهة", ["الكل"] + sorted(filtered["الجهة"].dropna().unique()))
-        if v != "الكل": filtered = filtered[filtered["الجهة"] == v]
-
-with f3:
     if "البلدية" in filtered.columns:
-        v = st.selectbox("البلدية", ["الكل"] + sorted(filtered["البلدية"].dropna().unique()))
-        if v != "الكل": filtered = filtered[filtered["البلدية"] == v]
-
+        mun = st.selectbox("البلدية", ["الكل"] + sorted(filtered["البلدية"].dropna().unique()))
+        if mun != "الكل": filtered = filtered[filtered["البلدية"] == mun]
+with f2:
+    project = st.selectbox("اسم المشروع", ["الكل"] + sorted(filtered["اسم المشروع"].dropna().unique()))
+    if project != "الكل": filtered = filtered[filtered["اسم المشروع"] == project]
+with f3:
+    if "نوع المشروع" in filtered.columns:
+        pt = st.selectbox("نوع المشروع", ["الكل"] + sorted(filtered["نوع المشروع"].dropna().unique()))
+        if pt != "الكل": filtered = filtered[filtered["نوع المشروع"] == pt]
 with f4:
-    if "حالة المشروع" in filtered.columns:
-        v = st.selectbox("حالة المشروع", ["الكل"] + sorted(filtered["حالة المشروع"].dropna().unique()))
-        if v != "الكل": filtered = filtered[filtered["حالة المشروع"] == v]
-
+    if "حالة الاعتماد" in filtered.columns:
+        ap = st.selectbox("حالة الاعتماد", ["الكل"] + sorted(filtered["حالة الاعتماد"].dropna().unique()))
+        if ap != "الكل": filtered = filtered[filtered["حالة الاعتماد"] == ap]
 with f5:
-    if "نوع العقد" in filtered.columns:
-        v = st.selectbox("نوع العقد", ["الكل"] + sorted(filtered["نوع العقد"].dropna().unique()))
-        if v != "الكل": filtered = filtered[filtered["نوع العقد"] == v]
+    if "حالة المشروع" in filtered.columns:
+        stt = st.selectbox("حالة المشروع", ["الكل"] + sorted(filtered["حالة المشروع"].dropna().unique()))
+        if stt != "الكل": filtered = filtered[filtered["حالة المشروع"] == stt]
 
-# ===== الكاردات =====
 k1,k2,k3,k4,k5,k6 = st.columns(6)
-
-total_contract = filtered["قيمة العقد"].sum()
-total_claims = filtered["قيمة المستخلصات"].sum()
-total_remain = filtered["المتبقي من المستخلص"].sum()
-spend_ratio = (total_claims / total_contract * 100) if total_contract else 0
-
-progress_ratio = 0
-if "قيمة العقد" in filtered.columns and "نسبة الإنجاز" in filtered.columns:
-    w = filtered.dropna(subset=["قيمة العقد","نسبة الإنجاز"])
-    if not w.empty and w["قيمة العقد"].sum() > 0:
-        progress_ratio = (w["قيمة العقد"] * w["نسبة الإنجاز"]).sum() / w["قيمة العقد"].sum()
-
 k1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
-k2.markdown(f"<div class='card green'><h2>{total_contract:,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
-k3.markdown(f"<div class='card blue'><h2>{total_claims:,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
-k4.markdown(f"<div class='card orange'><h2>{total_remain:,.0f}</h2>المتبقي</div>", unsafe_allow_html=True)
-k5.markdown(f"<div class='card gray'><h2>{spend_ratio:.1f}%</h2>نسبة الصرف</div>", unsafe_allow_html=True)
-k6.markdown(f"<div class='card green'><h2>{progress_ratio:.1f}%</h2>نسبة الإنجاز</div>", unsafe_allow_html=True)
+k2.markdown(f"<div class='card green'><h2>{filtered['قيمة العقد'].sum():,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
+k3.markdown(f"<div class='card gray'><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
+k4.markdown(f"<div class='card orange'><h2>{filtered.get('المتبقي من المستخلص',0).sum():,.0f}</h2>المتبقي</div>", unsafe_allow_html=True)
 
-# ===== حالة المشاريع =====
 st.subheader("حالة المشاريع")
 sdf = build_status_df(filtered)
 st.altair_chart(
@@ -277,24 +285,18 @@ st.altair_chart(
     use_container_width=True
 )
 
-# ===== الشارتين =====
 c1,c2 = st.columns(2)
 with c1:
-    st.subheader("عدد المشاريع حسب البلدية")
+    st.subheader("حسب البلدية")
     st.bar_chart(filtered["البلدية"].value_counts())
-
 with c2:
-    st.subheader("عدد المشاريع حسب حالة المشروع")
+    st.subheader("حسب حالة المشروع")
     st.bar_chart(filtered["حالة المشروع"].value_counts())
 
-# ===== التنبيهات =====
 st.subheader("تنبيهات المشاريع")
-
 overdue = filtered[filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", na=False)]
-risk = filtered[
-    (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
-    (filtered["نسبة الإنجاز"] < 70)
-]
+risk = filtered[(filtered["تاريخ الانتهاء"] <= pd.Timestamp.today()+timedelta(days=30)) &
+                (filtered["نسبة الإنجاز"] < 70)]
 
 b1,b2 = st.columns(2)
 if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
@@ -307,7 +309,6 @@ if st.session_state.show_overdue:
 if st.session_state.show_risk:
     st.dataframe(risk, use_container_width=True)
 
-# ===== جدول التفاصيل =====
 st.markdown("---")
 st.subheader("تفاصيل المشاريع")
 st.dataframe(filtered, use_container_width=True)
