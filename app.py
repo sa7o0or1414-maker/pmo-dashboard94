@@ -211,8 +211,40 @@ if df is None:
 # ================= تحليل خاص لمشاريع بهجة (كما هو) =================
 if st.session_state.top_nav == "مشاريع بهجة":
     st.subheader("تحليل مشاريع بهجة")
-    st.dataframe(df, use_container_width=True)
+
+    f1,f2,f3,f4 = st.columns(4)
+    mun = f1.selectbox("البلدية", ["الكل"] + sorted(df["البلدية"].dropna().unique()))
+    project = f2.selectbox("اسم المشروع", ["الكل"] + sorted(df["اسم المشروع"].dropna().unique()))
+    ptype = f3.selectbox("نوع المشروع", ["الكل"] + sorted(df["نوع المشروع"].dropna().unique()))
+    approval = f4.selectbox("حالة الاعتماد", ["الكل"] + sorted(df["حالة الاعتماد"].dropna().unique()))
+
+    filtered = df.copy()
+    if mun!="الكل": filtered = filtered[filtered["البلدية"]==mun]
+    if project!="الكل": filtered = filtered[filtered["اسم المشروع"]==project]
+    if ptype!="الكل": filtered = filtered[filtered["نوع المشروع"]==ptype]
+    if approval!="الكل": filtered = filtered[filtered["حالة الاعتماد"]==approval]
+
+    total_cost = filtered["التكلفة"].sum()
+    progress_col = "نسبة الإنجاز" if "نسبة الإنجاز" in filtered.columns else "نسبة الانجاز"
+    avg_progress = pd.to_numeric(filtered[progress_col], errors="coerce").mean()
+
+    c1,c2,c3 = st.columns(3)
+    c1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
+    c2.markdown(f"<div class='card green'><h2>{total_cost:,.0f}</h2>إجمالي التكلفة</div>", unsafe_allow_html=True)
+    c3.markdown(f"<div class='card orange'><h2>{avg_progress:.1f}%</h2>نسبة الإنجاز</div>", unsafe_allow_html=True)
+
+    ch1,ch2 = st.columns(2)
+    with ch1:
+        st.subheader("حالة المشروع")
+        st.bar_chart(filtered["حالة المشروع"].value_counts())
+    with ch2:
+        st.subheader("المستهدف")
+        st.bar_chart(filtered["المستهدف"].value_counts())
+
+    st.subheader("تفاصيل مشاريع بهجة")
+    st.dataframe(filtered, use_container_width=True)
     st.stop()
+
 
 # ================= الفلاتر (الباب الثالث + الرابع) =================
 filtered = df.copy()
