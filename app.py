@@ -393,7 +393,6 @@ with f4:
     if approval != "الكل":
         filtered = filtered[filtered["حالة الاعتماد"] == approval]
 
-
     # ---------- كاردات ----------
     c1, c2, c3 = st.columns(3)
 
