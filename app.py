@@ -219,11 +219,48 @@ with f5:
         if ct != "الكل":
             filtered = filtered[filtered["نوع العقد"] == ct]
 
-# ================= KPI =================
-k1,k2,k3 = st.columns(3)
-k1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
-k2.markdown(f"<div class='card green'><h2>{filtered['قيمة العقد'].sum():,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
-k3.markdown(f"<div class='card orange'><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
+# ================= KPI (محدثة) =================
+k1,k2,k3,k4,k5,k6,k7 = st.columns(7)
+
+# عدد المشاريع
+projects_count = len(filtered)
+
+# عدد العقود (رقم العقد عدّ)
+contracts_count = (
+    filtered["رقم العقد"].nunique()
+    if "رقم العقد" in filtered.columns
+    else 0
+)
+
+# القيم المالية
+total_contract = filtered["قيمة العقد"].sum(skipna=True) if "قيمة العقد" in filtered.columns else 0
+total_claims = filtered["قيمة المستخلصات"].sum(skipna=True) if "قيمة المستخلصات" in filtered.columns else 0
+total_remain = filtered["المتبقي من المستخلص"].sum(skipna=True) if "المتبقي من المستخلص" in filtered.columns else 0
+
+# نسبة الصرف
+spend_ratio = (total_claims / total_contract * 100) if total_contract > 0 else 0
+
+# نسبة الإنجاز (مرجّحة بقيمة العقد)
+progress_ratio = 0
+if "قيمة العقد" in filtered.columns and "نسبة الإنجاز" in filtered.columns:
+    w = filtered.dropna(subset=["قيمة العقد","نسبة الإنجاز"])
+    if not w.empty and w["قيمة العقد"].sum() > 0:
+        progress_ratio = (w["قيمة العقد"] * w["نسبة الإنجاز"]).sum() / w["قيمة العقد"].sum()
+
+# ===== عرض الكاردات =====
+k1.markdown(f"<div class='card blue'><h2>{projects_count}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
+
+k2.markdown(f"<div class='card gray'><h2>{contracts_count}</h2>عدد العقود</div>", unsafe_allow_html=True)
+
+k3.markdown(f"<div class='card green'><h2>{total_contract:,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
+
+k4.markdown(f"<div class='card blue'><h2>{total_claims:,.0f}</h2>قيمة المستخلصات المعتمدة</div>", unsafe_allow_html=True)
+
+k5.markdown(f"<div class='card orange'><h2>{total_remain:,.0f}</h2>المتبقي من المستخلص</div>", unsafe_allow_html=True)
+
+k6.markdown(f"<div class='card gray'><h2>{spend_ratio:.1f}%</h2>نسبة الصرف</div>", unsafe_allow_html=True)
+
+k7.markdown(f"<div class='card green'><h2>{progress_ratio:.1f}%</h2>نسبة الإنجاز</div>", unsafe_allow_html=True)
 
 # ================= حالة المشاريع =================
 st.subheader("حالة المشاريع")
