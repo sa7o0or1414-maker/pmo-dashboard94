@@ -353,6 +353,14 @@ if df is None:
 if st.session_state.top_nav == "مشاريع بهجة":
 
     st.subheader("تحليل مشاريع بهجة")
+# ===== توحيد أسماء الأعمدة (حل نهائي للأخطاء) =====
+filtered.columns = filtered.columns.str.strip()
+
+# تحويل الأعمدة الرقمية
+num_cols = ["التكلفة", "نسبة الانجاز", "المستهدف", "خط الطول", "خط العرض"]
+for c in num_cols:
+    if c in filtered.columns:
+        filtered[c] = pd.to_numeric(filtered[c], errors="coerce")
 
     # ---------- فلاتر مترابطة ----------
     filtered = df.copy()
@@ -414,17 +422,16 @@ if st.session_state.top_nav == "مشاريع بهجة":
     )
 
     # ---------- خريطة المشاريع (مُصلحة) ----------
-    st.subheader("مواقع المشاريع")
+map_df = filtered.dropna(subset=["خط الطول", "خط العرض"])[["خط العرض", "خط الطول"]]
 
-    map_df = filtered[["خط العرض", "خط الطول"]].copy()
-    map_df["lat"] = pd.to_numeric(map_df["خط العرض"], errors="coerce")
-    map_df["lon"] = pd.to_numeric(map_df["خط الطول"], errors="coerce")
-    map_df = map_df.dropna(subset=["lat", "lon"])
+if not map_df.empty:
+    st.map(map_df.rename(columns={
+        "خط العرض": "lat",
+        "خط الطول": "lon"
+    }))
+else:
+    st.info("لا توجد بيانات موقع صالحة للعرض")
 
-    if not map_df.empty:
-        st.map(map_df[["lat", "lon"]])
-    else:
-        st.info("لا توجد إحداثيات جغرافية للمشاريع")
 
     # ---------- الشارتات ----------
     ch1, ch2 = st.columns(2)
@@ -485,9 +492,18 @@ if st.session_state.top_nav == "مشاريع بهجة":
         st.subheader("حالة المشروع")
         st.bar_chart(filtered["حالة المشروع"].value_counts())
 
-    with ch2:
-        st.subheader("المستهدف")
-        st.bar_chart(filtered["المستهدف"].value_counts())
+with ch2:
+    st.subheader("المستهدف مقابل الإنجاز")
+
+    if all(col in filtered.columns for col in ["اسم المشروع", "نسبة الانجاز", "المستهدف"]):
+        target_df = (
+            filtered[["اسم المشروع", "نسبة الانجاز", "المستهدف"]]
+            .set_index("اسم المشروع")
+        )
+        st.bar_chart(target_df)
+    else:
+        st.warning("أعمدة المستهدف أو نسبة الإنجاز غير موجودة في الملف")
+
 
     # ---------- جدول ----------
     st.markdown("---")
