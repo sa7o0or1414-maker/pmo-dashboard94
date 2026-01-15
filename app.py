@@ -45,6 +45,11 @@ html, body, [class*="css"] {
     color: #153e46;
 }
 
+/* توسيط عنوان الصفحة */
+h1 {
+    text-align: center !important;
+}
+
 /* ===== Sidebar ===== */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f2d33, #153e46);
