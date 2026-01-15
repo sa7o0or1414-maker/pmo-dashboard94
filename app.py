@@ -51,6 +51,49 @@ DATA_FILES = {
 # ================= CSS =================
 st.markdown("""
 <style>
+/* ===== Sidebar ===== */
+section[data-testid="stSidebar"] {
+    background: #1e5055 !important;
+}
+
+section[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+}
+
+/* أزرار السايدبار */
+section[data-testid="stSidebar"] .stButton > button {
+    background: #1e5055 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.25) !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: #24666c !important;
+}
+
+/* ===== Top Bar Buttons ===== */
+.topbar-btn button {
+    background: #1e5055 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.35) !important;
+}
+
+/* Hover */
+.topbar-btn button:hover {
+    background: #24666c !important;
+    color: #ffffff !important;
+}
+
+/* الزر المختار */
+.topbar-btn.selected button {
+    background: #163f43 !important;
+    color: #ffffff !important;
+    border: 2px solid #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.25) !important;
+}
+</style>
+
+<style>
 /* ===== Top Navigation Buttons ===== */
 .topbar-btn button {
     min-width: 160px;
