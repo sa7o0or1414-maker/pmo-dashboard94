@@ -228,14 +228,13 @@ if st.session_state.page == "upload":
 # ================= Home =================
 if st.session_state.page == "home":
     st.title("لوحة المعلومات")
-"page_title": "center",
     df = load_data()
     if df is None:
         st.warning("يرجى رفع ملف Excel")
         st.stop()
 
     # ================= Top Bar (الأزرار المطلوبة فقط) =================
-    st.markdown("<div class='topbar-wrap'><div class='topbar-title'> </div></div>", unsafe_allow_html=True)
+    
 
     top_items = [
         "مشاريع الباب الثالث",
