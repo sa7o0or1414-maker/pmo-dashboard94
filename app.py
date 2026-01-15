@@ -51,6 +51,47 @@ DATA_FILES = {
 # ================= CSS =================
 st.markdown("""
 <style>
+/* ===== Top Navigation Buttons ===== */
+.topbar-btn button {
+    min-width: 160px;
+    height: 44px;
+    padding: 8px 18px !important;
+    border-radius: 14px !important;
+    background: #ffffff !important;
+    border: 1.5px solid #d0d7de !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #153e46 !important;
+    white-space: nowrap !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
+    transition: all 0.25s ease-in-out;
+}
+
+/* Hover */
+.topbar-btn button:hover {
+    border-color: #2c7be5 !important;
+    background: #f5f9ff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(44,123,229,0.15) !important;
+}
+
+/* الزر المختار */
+.topbar-btn button:focus,
+.topbar-btn button:active {
+    border: 2px solid #ff8c82 !important;
+    background: #fff5f4 !important;
+    color: #b42318 !important;
+    box-shadow: 0 0 0 4px rgba(255,140,130,0.25) !important;
+}
+
+/* ترتيب الصفوف */
+[data-testid="column"] {
+    display: flex;
+    justify-content: center;
+}
+</style>
+
+<style>
 /* ===== تحسين تنسيق الكاردات ===== */
 .card {
     min-height: 140px;
