@@ -130,27 +130,24 @@ def build_status_df(df):
     return out
 
 # ================= Sidebar =================
-/* ===== Sidebar ===== */
-section[data-testid="stSidebar"] {
-    background: #1e5055 !important;
-}
+with st.sidebar:
+    if LOGO_PATH.exists():
+        st.image(LOGO_PATH, width=120)
 
-section[data-testid="stSidebar"] * {
-    color: #ffffff !important;
-}
+    if st.button("الصفحة الرئيسية"):
+        st.session_state.page = "home"
 
-/* أزرار السايدبار */
-section[data-testid="stSidebar"] .stButton > button {
-    background: #1e5055 !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(255,255,255,0.25) !important;
-}
+    if st.session_state.role == "viewer":
+        if st.button("تسجيل الدخول"):
+            st.session_state.page = "login"
 
-section[data-testid="stSidebar"] .stButton > button:hover {
-    background: #24666c !important;
-}
-
-
+    if st.session_state.role == "admin":
+        if st.button("رفع البيانات"):
+            st.session_state.page = "upload"
+        if st.button("تسجيل خروج"):
+            st.session_state.role = "viewer"
+            st.session_state.page = "home"
+            st.rerun()
 
 # ================= Login =================
 if st.session_state.page == "login":
