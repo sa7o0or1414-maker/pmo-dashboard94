@@ -5,7 +5,12 @@ from datetime import timedelta
 import base64
 import altair as alt
 
-
+# ================= إعدادات الصفحة =================
+st.set_page_config(
+    page_title="لوحة المعلومات  | PMO",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # ================= Session State =================
 defaults = {
