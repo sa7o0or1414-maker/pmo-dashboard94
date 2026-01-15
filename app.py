@@ -349,50 +349,101 @@ if df is None:
     st.warning("لا يوجد ملف لهذا القسم")
     st.stop()
 # ================= تحليل خاص بمشاريع بهجة =================
+# ================= تحليل خاص بمشاريع بهجة (مُصحح بالكامل) =================
 if st.session_state.top_nav == "مشاريع بهجة":
 
     st.subheader("تحليل مشاريع بهجة")
 
-    # ---------- فلاتر ----------
+    # ---------- فلاتر مترابطة ----------
+    filtered = df.copy()
+
     f1, f2, f3, f4 = st.columns(4)
 
     with f1:
         mun = st.selectbox(
             "البلدية",
-            ["الكل"] + sorted(df["البلدية"].dropna().unique())
+            ["الكل"] + sorted(filtered["البلدية"].dropna().unique())
         )
+        if mun != "الكل":
+            filtered = filtered[filtered["البلدية"] == mun]
 
     with f2:
         project = st.selectbox(
             "اسم المشروع",
-            ["الكل"] + sorted(df["اسم المشروع"].dropna().unique())
+            ["الكل"] + sorted(filtered["اسم المشروع"].dropna().unique())
         )
+        if project != "الكل":
+            filtered = filtered[filtered["اسم المشروع"] == project]
 
     with f3:
         ptype = st.selectbox(
             "نوع المشروع",
-            ["الكل"] + sorted(df["نوع المشروع"].dropna().unique())
+            ["الكل"] + sorted(filtered["نوع المشروع"].dropna().unique())
         )
+        if ptype != "الكل":
+            filtered = filtered[filtered["نوع المشروع"] == ptype]
 
     with f4:
         approval = st.selectbox(
             "حالة الاعتماد",
-            ["الكل"] + sorted(df["حالة الاعتماد"].dropna().unique())
+            ["الكل"] + sorted(filtered["حالة الاعتماد"].dropna().unique())
         )
+        if approval != "الكل":
+            filtered = filtered[filtered["حالة الاعتماد"] == approval]
 
-    filtered = df.copy()
+    # ---------- كاردات ----------
+    c1, c2, c3 = st.columns(3)
 
-    if mun != "الكل":
-        filtered = filtered[filtered["البلدية"] == mun]
+    total_cost = filtered["التكلفة"].sum()
+    avg_progress = filtered["نسبة الانجاز"].mean()
+    projects_count = len(filtered)
 
-    if project != "الكل":
-        filtered = filtered[filtered["اسم المشروع"] == project]
+    c1.markdown(
+        f"<div class='card blue'><h2>{projects_count}</h2>عدد المشاريع</div>",
+        unsafe_allow_html=True
+    )
 
-    if ptype != "الكل":
-        filtered = filtered[filtered["نوع المشروع"] == ptype]
+    c2.markdown(
+        f"<div class='card green'><h2>{total_cost:,.0f}</h2>إجمالي التكلفة</div>",
+        unsafe_allow_html=True
+    )
 
-    if approval != "الكل":
-        filtered = filtered[filtered["حالة الاعتماد"] == approval]
+    c3.markdown(
+        f"<div class='card orange'><h2>{avg_progress:.1f}%</h2>نسبة الإنجاز</div>",
+        unsafe_allow_html=True
+    )
+
+    # ---------- خريطة المشاريع (مُصلحة) ----------
+    st.subheader("مواقع المشاريع")
+
+    map_df = filtered[["خط العرض", "خط الطول"]].copy()
+    map_df["lat"] = pd.to_numeric(map_df["خط العرض"], errors="coerce")
+    map_df["lon"] = pd.to_numeric(map_df["خط الطول"], errors="coerce")
+    map_df = map_df.dropna(subset=["lat", "lon"])
+
+    if not map_df.empty:
+        st.map(map_df[["lat", "lon"]])
+    else:
+        st.info("لا توجد إحداثيات جغرافية للمشاريع")
+
+    # ---------- الشارتات ----------
+    ch1, ch2 = st.columns(2)
+
+    with ch1:
+        st.subheader("حالة المشروع")
+        st.bar_chart(filtered["حالة المشروع"].value_counts())
+
+    with ch2:
+        st.subheader("المستهدف مقابل الإنجاز")
+        target_df = filtered[["اسم المشروع", "نسبة الانجاز", "المستهدف"]].set_index("اسم المشروع")
+        st.bar_chart(target_df)
+
+    # ---------- جدول ----------
+    st.markdown("---")
+    st.subheader("تفاصيل مشاريع بهجة")
+    st.dataframe(filtered, use_container_width=True)
+
+    st.stop()
 
     # ---------- كاردات ----------
     c1, c2, c3 = st.columns(3)
