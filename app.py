@@ -9,7 +9,6 @@ import altair as alt
 st.set_page_config(
     page_title="لوحة المعلومات  | PMO",
     layout="wide",
-    "page_title": "center",
     initial_sidebar_state="expanded"
 )
 
@@ -229,7 +228,7 @@ if st.session_state.page == "upload":
 # ================= Home =================
 if st.session_state.page == "home":
     st.title("لوحة المعلومات")
-
+"page_title": "center",
     df = load_data()
     if df is None:
         st.warning("يرجى رفع ملف Excel")
