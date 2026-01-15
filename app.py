@@ -7,7 +7,7 @@ import altair as alt
 
 # ================= إعدادات الصفحة =================
 st.set_page_config(
-    page_title="لوحة المعلومات  | PMO",
+    page_title="لوحة المعلومات | PMO",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -16,7 +16,6 @@ st.set_page_config(
 defaults = {
     "role": "viewer",
     "page": "home",
-    "logo_align": "center",
     "show_overdue": False,
     "show_risk": False,
     "top_nav": "الافتراضي"
@@ -59,30 +58,17 @@ html, body, [class*="css"] {
 }
 h1 { text-align:center; }
 
-/* ===== Sidebar ===== */
+/* Sidebar */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f2d33, #153e46);
-    padding-top: 24px;
+    padding-top: 20px;
 }
 section[data-testid="stSidebar"] * {
     color: white !important;
     text-align: center;
 }
-section[data-testid="stSidebar"] .stButton {
-    display: flex;
-    justify-content: center;
-}
-section[data-testid="stSidebar"] .stButton > button {
-    padding: 10px 26px;
-    margin: 10px 0;
-    background: rgba(255,255,255,0.18);
-    border-radius: 20px;
-    border: none;
-    font-size: 14px;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
-}
 
-/* ===== Cards ===== */
+/* Cards */
 .card {
     background:#fff;
     padding:18px;
@@ -94,23 +80,31 @@ section[data-testid="stSidebar"] .stButton > button {
 .card.green { border-top:4px solid #00a389; }
 .card.orange { border-top:4px solid #f4a261; }
 .card.gray { border-top:4px solid #6c757d; }
+
+/* Top buttons */
+.top-btn button{
+    padding:10px 16px !important;
+    background:rgba(15,45,51,0.15) !important;
+    border-radius:18px !important;
+    border:none !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
 # ================= أدوات =================
 def load_data():
-    filename = DATA_FILES.get(st.session_state.top_nav, "data.xlsx")
-    path = DATA_DIR / filename
+    file = DATA_FILES.get(st.session_state.top_nav, "data.xlsx")
+    path = DATA_DIR / file
     if not path.exists():
         return None
 
-    df = pd.read_excel(path)
+    df = pd.read_excel(path, engine="openpyxl")
     df.columns = [str(c).strip() for c in df.columns]
 
     df.rename(columns={
         "إسم المشـــروع": "اسم المشروع",
-        "تاريخ الانتهاء من المشروع": "تاريخ الانتهاء",
         "قيمة المستخلصات المعتمده": "قيمة المستخلصات",
+        "تاريخ الانتهاء من المشروع": "تاريخ الانتهاء",
     }, inplace=True)
 
     for c in ["قيمة العقد","قيمة المستخلصات","نسبة الإنجاز"]:
@@ -122,10 +116,17 @@ def load_data():
 
     return df
 
+def status_color(s):
+    s = str(s)
+    if "متأخر" in s or "متعثر" in s: return "#e63946"
+    if "مكتمل" in s or "منجز" in s: return "#00a389"
+    if "جاري" in s or "قيد" in s: return "#2c7be5"
+    return "#f4a261"
+
 def build_status_df(df):
     s = df["حالة المشروع"].fillna("غير محدد").astype(str)
-    out = s.value_counts().reset_index()
-    out.columns = ["الحالة","عدد"]
+    out = s.value_counts().rename_axis("الحالة").reset_index(name="عدد")
+    out["لون"] = out["الحالة"].apply(status_color)
     return out
 
 # ================= Sidebar =================
@@ -164,7 +165,7 @@ if st.session_state.page == "login":
 
 # ================= Upload =================
 if st.session_state.page == "upload":
-    st.title("رفع البيانات حسب نوع المشاريع")
+    st.title("رفع الملفات حسب نوع المشاريع")
     for name, file in DATA_FILES.items():
         if name == "الافتراضي":
             continue
@@ -172,90 +173,99 @@ if st.session_state.page == "upload":
             up = st.file_uploader(name, type=["xlsx"], key=file)
             if up:
                 (DATA_DIR / file).write_bytes(up.getbuffer())
-                st.success("تم الرفع")
+                st.success("تم رفع الملف")
     st.stop()
 
 # ================= Home =================
-if st.session_state.page == "home":
-    st.title("لوحة المعلومات")
+st.title("لوحة المعلومات")
 
-    # ===== Top buttons =====
-    cols1 = st.columns(5)
-    for i, name in enumerate(list(DATA_FILES.keys())[:5]):
-        if name != "الافتراضي":
-            with cols1[i]:
-                if st.button(name):
-                    st.session_state.top_nav = name
-                    st.rerun()
+# ===== Top Buttons =====
+items = list(DATA_FILES.keys())
+items.remove("الافتراضي")
 
-    cols2 = st.columns(5)
-    for i, name in enumerate(list(DATA_FILES.keys())[5:10]):
-        with cols2[i]:
-            if st.button(name):
-                st.session_state.top_nav = name
-                st.rerun()
+r1 = st.columns(5)
+for i, name in enumerate(items[:5]):
+    with r1[i]:
+        if st.button(name):
+            st.session_state.top_nav = name
+            st.rerun()
 
-    st.caption(f"📊 التحليل الحالي: {st.session_state.top_nav}")
+r2 = st.columns(5)
+for i, name in enumerate(items[5:]):
+    with r2[i]:
+        if st.button(name):
+            st.session_state.top_nav = name
+            st.rerun()
 
-    df = load_data()
-    if df is None:
-        st.warning("لم يتم رفع ملف")
-        st.stop()
+st.caption(f"📊 التحليل الحالي: {st.session_state.top_nav}")
 
-    # ===== الفلاتر =====
-    f1,f2,f3 = st.columns(3)
-    with f1:
-        proj = st.selectbox("اسم المشروع", ["الكل"] + df["اسم المشروع"].dropna().unique().tolist())
-    with f2:
-        stat = st.selectbox("حالة المشروع", ["الكل"] + df["حالة المشروع"].dropna().unique().tolist())
-    with f3:
-        ent = st.selectbox("الجهة", ["الكل"] + df["الجهة"].dropna().unique().tolist())
+df = load_data()
+if df is None:
+    st.warning("لا يوجد ملف لهذا القسم")
+    st.stop()
 
-    filtered = df.copy()
-    if proj != "الكل":
-        filtered = filtered[filtered["اسم المشروع"] == proj]
-    if stat != "الكل":
-        filtered = filtered[filtered["حالة المشروع"] == stat]
-    if ent != "الكل":
-        filtered = filtered[filtered["الجهة"] == ent]
+# ===== Filters =====
+f1,f2,f3 = st.columns(3)
+with f1:
+    p = st.selectbox("اسم المشروع", ["الكل"] + df["اسم المشروع"].dropna().unique().tolist())
+with f2:
+    s = st.selectbox("حالة المشروع", ["الكل"] + df["حالة المشروع"].dropna().unique().tolist())
+with f3:
+    e = st.selectbox("الجهة", ["الكل"] + df["الجهة"].dropna().unique().tolist())
 
-    # ===== KPI =====
-    k1,k2,k3 = st.columns(3)
-    k1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
-    k2.markdown(f"<div class='card green'><h2>{filtered['قيمة العقد'].sum():,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
-    k3.markdown(f"<div class='card orange'><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
+filtered = df.copy()
+if p != "الكل": filtered = filtered[filtered["اسم المشروع"] == p]
+if s != "الكل": filtered = filtered[filtered["حالة المشروع"] == s]
+if e != "الكل": filtered = filtered[filtered["الجهة"] == e]
 
-    # ===== حالة المشاريع =====
-    st.subheader("حالة المشاريع")
-    st.bar_chart(build_status_df(filtered).set_index("الحالة"))
+# ===== KPI =====
+k1,k2,k3 = st.columns(3)
+k1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
+k2.markdown(f"<div class='card green'><h2>{filtered['قيمة العقد'].sum():,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
+k3.markdown(f"<div class='card orange'><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
 
-    # ===== شارتين جنب بعض =====
-    c1,c2 = st.columns(2)
-    with c1:
-        st.subheader("المشاريع حسب الجهة")
-        st.bar_chart(filtered["الجهة"].value_counts())
-    with c2:
-        st.subheader("المشاريع حسب الحالة")
-        st.bar_chart(filtered["حالة المشروع"].value_counts())
+# ===== حالة المشاريع =====
+st.subheader("حالة المشاريع")
+sdf = build_status_df(filtered)
+st.altair_chart(
+    alt.Chart(sdf).mark_bar().encode(
+        x="عدد",
+        y=alt.Y("الحالة", sort="-x"),
+        color=alt.Color("الحالة", scale=alt.Scale(domain=sdf["الحالة"], range=sdf["لون"]))
+    ),
+    use_container_width=True
+)
 
-    # ===== تنبيهات =====
-    overdue = filtered[filtered["حالة المشروع"].str.contains("متأخر|متعثر", na=False)]
-    risk = filtered[
-        (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
-        (filtered["نسبة الإنجاز"] < 70)
-    ]
+# ===== Charts side by side =====
+c1,c2 = st.columns(2)
+with c1:
+    st.subheader("عدد المشاريع حسب الجهة")
+    st.bar_chart(filtered["الجهة"].value_counts())
 
-    b1,b2 = st.columns(2)
-    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
-        st.session_state.show_overdue = not st.session_state.show_overdue
-    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
-        st.session_state.show_risk = not st.session_state.show_risk
+with c2:
+    st.subheader("عدد المشاريع حسب الحالة")
+    st.bar_chart(filtered["حالة المشروع"].value_counts())
 
-    if st.session_state.show_overdue:
-        st.dataframe(overdue, use_container_width=True)
-    if st.session_state.show_risk:
-        st.dataframe(risk, use_container_width=True)
+# ===== Alerts =====
+st.subheader("تنبيهات المشاريع")
+overdue = filtered[filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", na=False)]
+risk = filtered[
+    (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
+    (filtered["نسبة الإنجاز"] < 70)
+]
 
-    st.markdown("---")
-    st.subheader("تفاصيل المشاريع")
-    st.dataframe(filtered, use_container_width=True)
+b1,b2 = st.columns(2)
+if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
+    st.session_state.show_overdue = not st.session_state.show_overdue
+if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
+    st.session_state.show_risk = not st.session_state.show_risk
+
+if st.session_state.show_overdue:
+    st.dataframe(overdue, use_container_width=True)
+if st.session_state.show_risk:
+    st.dataframe(risk, use_container_width=True)
+
+# ===== Table =====
+st.markdown("---")
+st.subheader("تفاصيل المشاريع")
+st.dataframe(filtered, use_container_width=True)
