@@ -227,7 +227,7 @@ if st.session_state.page == "upload":
 
 # ================= Home =================
 if st.session_state.page == "home":
-    st.title("لوحة التحكم")
+    st.title("لوحة المعلومات")
 
     df = load_data()
     if df is None:
@@ -235,7 +235,7 @@ if st.session_state.page == "home":
         st.stop()
 
     # ================= Top Bar (الأزرار المطلوبة فقط) =================
-    st.markdown("<div class='topbar-wrap'><div class='topbar-title'>القائمة العلوية</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='topbar-wrap'><div class='topbar-title'> </div></div>", unsafe_allow_html=True)
 
     top_items = [
         "مشاريع الباب الثالث",
