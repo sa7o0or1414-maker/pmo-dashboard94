@@ -192,6 +192,41 @@ h1 { text-align:center; }
 .card.orange { border-top:4px solid #f4a261; }
 .card.gray { border-top:4px solid #6c757d; }
 </style>
+<style>
+/* ===== Top Navigation Buttons (بنفس لون البار) ===== */
+.topbar-btn button {
+    background-color: #1e5055 !important;
+    color: #ffffff !important;
+    border: 1.5px solid rgba(255,255,255,0.35) !important;
+    min-width: 160px;
+    height: 44px;
+    padding: 8px 18px !important;
+    border-radius: 14px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    transition: all 0.25s ease-in-out;
+}
+
+/* Hover */
+.topbar-btn button:hover {
+    background-color: #24666c !important;
+    color: #ffffff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25) !important;
+}
+
+/* الزر المختار */
+.topbar-btn button:focus,
+.topbar-btn button:active {
+    background-color: #163f43 !important;
+    color: #ffffff !important;
+    border: 2px solid #ffffff !important;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.25) !important;
+}
+</style>
+
 """, unsafe_allow_html=True)
 
 # ================= أدوات =================
