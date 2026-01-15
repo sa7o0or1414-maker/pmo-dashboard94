@@ -231,12 +231,18 @@ h1 { text-align:center; }
 
 # ================= أدوات =================
 def load_data():
-    file = DATA_FILES.get(st.session_state.top_nav, "data.xlsx")
-    path = DATA_DIR / file
+    filename = DATA_FILES.get(st.session_state.top_nav, "data.xlsx")
+    path = DATA_DIR / filename
     if not path.exists():
         return None
 
-    df = pd.read_excel(path, engine="openpyxl")
+    try:
+        df = pd.read_excel(path, engine="openpyxl")
+    except Exception as e:
+        st.error(f"❌ خطأ في قراءة ملف Excel: {filename}")
+        st.info("⚠️ يرجى إعادة حفظ الملف من Excel (Save As) ثم رفعه من جديد")
+        st.stop()
+
     df.columns = [str(c).strip() for c in df.columns]
 
     df.rename(columns={
