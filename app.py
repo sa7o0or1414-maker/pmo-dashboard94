@@ -51,6 +51,45 @@ DATA_FILES = {
 # ================= CSS =================
 st.markdown("""
 <style>
+/* ===== تحسين تنسيق الكاردات ===== */
+.card {
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* الرقم داخل الكارد */
+.card h2 {
+    font-size: 22px !important;
+    font-weight: 700;
+    margin-bottom: 6px;
+    white-space: nowrap;        /* يمنع النزول لسطر */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* النص أسفل الرقم */
+.card div,
+.card span,
+.card p {
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* معالجة الأرقام الكبيرة (ملايين) */
+.card h2 {
+    letter-spacing: -0.5px;
+}
+
+/* توحيد ارتفاع الصف */
+[data-testid="column"] > div {
+    height: 100%;
+}
+</style>
+
+<style>
 html, body, [class*="css"] {
     direction: rtl;
     font-family: 'Segoe UI', sans-serif;
