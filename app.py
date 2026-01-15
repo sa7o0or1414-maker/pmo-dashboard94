@@ -417,46 +417,41 @@ if st.session_state.top_nav == "مشاريع بهجة":
     )
 
     # ---------- خريطة المشاريع ----------
-  st.subheader("مواقع المشاريع")
+     # ---------- خريطة المشاريع ----------
+    st.subheader("مواقع المشاريع")
 
-# تنظيف أسماء الأعمدة (يشيل مسافات/أسطر)
-filtered.columns = filtered.columns.astype(str).str.strip()
+    # تنظيف أسماء الأعمدة
+    filtered.columns = filtered.columns.astype(str).str.strip()
 
-def find_col(possible_names):
-    cols = {c.strip(): c for c in filtered.columns}
-    for name in possible_names:
-        if name in cols:
-            return cols[name]
-    return None
+    def find_col(possible_names):
+        for c in filtered.columns:
+            if c.strip() in possible_names:
+                return c
+        return None
 
-# أسماء محتملة لخط الطول/العرض (عربي + انجليزي)
-lon_col = find_col(["خط الطول", "خط_الطول", "Longitude", "LONGITUDE", "Lon", "LON", "X", "long", "lon"])
-lat_col = find_col(["خط العرض", "خط_العرض", "Latitude", "LATITUDE", "Lat", "LAT", "Y", "lat", "latitude"])
+    lon_col = find_col([
+        "خط الطول", "خط_الطول", "Longitude", "LONGITUDE",
+        "Lon", "LON", "X", "long", "lon"
+    ])
 
-if lon_col and lat_col:
-    map_df = filtered[[lat_col, lon_col]].copy()
-    map_df = map_df.rename(columns={lat_col: "lat", lon_col: "lon"})
-    map_df["lat"] = pd.to_numeric(map_df["lat"], errors="coerce")
-    map_df["lon"] = pd.to_numeric(map_df["lon"], errors="coerce")
-    map_df = map_df.dropna(subset=["lat", "lon"])
+    lat_col = find_col([
+        "خط العرض", "خط_العرض", "Latitude", "LATITUDE",
+        "Lat", "LAT", "Y", "lat", "latitude"
+    ])
 
-    if not map_df.empty:
-        st.map(map_df[["lat", "lon"]])
+    if lon_col and lat_col:
+        map_df = filtered[[lat_col, lon_col]].copy()
+        map_df = map_df.rename(columns={lat_col: "lat", lon_col: "lon"})
+        map_df["lat"] = pd.to_numeric(map_df["lat"], errors="coerce")
+        map_df["lon"] = pd.to_numeric(map_df["lon"], errors="coerce")
+        map_df = map_df.dropna(subset=["lat", "lon"])
+
+        if not map_df.empty:
+            st.map(map_df[["lat", "lon"]])
+        else:
+            st.info("الإحداثيات موجودة لكن القيم غير مكتملة.")
     else:
-        st.info("بيانات الإحداثيات موجودة لكن فيها قيم فاضية/غير رقمية.")
-else:
-    st.warning(
-        f"أعمدة الخريطة غير موجودة.\n"
-        f"الأعمدة الحالية في الملف: {list(filtered.columns)}\n"
-        f"لازم يكون عندك عمود للعرض وعمود للطول (مثال: خط العرض / خط الطول)."
-    )
-
-    map_df.columns = ["lon", "lat"]
-
-    if not map_df.empty:
-        st.map(map_df)
-    else:
-        st.info("لا توجد بيانات موقع")
+        st.warning("ملف بهجة لا يحتوي على أعمدة خط الطول / خط العرض.")
 
     # ---------- الشارتات ----------
     ch1, ch2 = st.columns(2)
