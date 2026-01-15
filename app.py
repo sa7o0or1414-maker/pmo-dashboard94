@@ -44,6 +44,10 @@ html, body, [class*="css"] {
     font-family: 'Segoe UI', sans-serif;
     color: #153e46;
 }
+/* توسيط عنوان الصفحة */
+h1 {
+    text-align: center !important;
+}
 
 /* ===== Sidebar ===== */
 section[data-testid="stSidebar"] {
