@@ -353,46 +353,46 @@ if st.session_state.top_nav == "مشاريع بهجة":
 
     st.subheader("تحليل مشاريع بهجة")
 
-    # ---------- فلاتر ----------
-    f1, f2, f3, f4 = st.columns(4)
+   # ---------- فلاتر مترابطة ----------
+filtered = df.copy()
+f1, f2, f3, f4 = st.columns(4)
 
-    with f1:
-        mun = st.selectbox(
-            "البلدية",
-            ["الكل"] + sorted(df["البلدية"].dropna().unique())
-        )
-
-    with f2:
-        project = st.selectbox(
-            "اسم المشروع",
-            ["الكل"] + sorted(df["اسم المشروع"].dropna().unique())
-        )
-
-    with f3:
-        ptype = st.selectbox(
-            "نوع المشروع",
-            ["الكل"] + sorted(df["نوع المشروع"].dropna().unique())
-        )
-
-    with f4:
-        approval = st.selectbox(
-            "حالة الاعتماد",
-            ["الكل"] + sorted(df["حالة الاعتماد"].dropna().unique())
-        )
-
-    filtered = df.copy()
-
+# البلدية
+with f1:
+    mun = st.selectbox(
+        "البلدية",
+        ["الكل"] + sorted(filtered["البلدية"].dropna().unique())
+    )
     if mun != "الكل":
         filtered = filtered[filtered["البلدية"] == mun]
 
+# اسم المشروع (يعتمد على البلدية)
+with f2:
+    project = st.selectbox(
+        "اسم المشروع",
+        ["الكل"] + sorted(filtered["اسم المشروع"].dropna().unique())
+    )
     if project != "الكل":
         filtered = filtered[filtered["اسم المشروع"] == project]
 
+# نوع المشروع (يعتمد على السابق)
+with f3:
+    ptype = st.selectbox(
+        "نوع المشروع",
+        ["الكل"] + sorted(filtered["نوع المشروع"].dropna().unique())
+    )
     if ptype != "الكل":
         filtered = filtered[filtered["نوع المشروع"] == ptype]
 
+# حالة الاعتماد (آخر فلتر)
+with f4:
+    approval = st.selectbox(
+        "حالة الاعتماد",
+        ["الكل"] + sorted(filtered["حالة الاعتماد"].dropna().unique())
+    )
     if approval != "الكل":
         filtered = filtered[filtered["حالة الاعتماد"] == approval]
+
 
     # ---------- كاردات ----------
     c1, c2, c3 = st.columns(3)
