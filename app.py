@@ -203,27 +203,60 @@ if st.session_state.page == "home":
         st.stop()
 
     # ===== الفلاتر =====
-    f1,f2,f3 = st.columns(3)
-    with f1:
-        proj = st.selectbox("اسم المشروع", ["الكل"] + df["اسم المشروع"].dropna().unique().tolist())
-    with f2:
-        stat = st.selectbox("حالة المشروع", ["الكل"] + df["حالة المشروع"].dropna().unique().tolist())
-    with f3:
-        ent = st.selectbox("الجهة", ["الكل"] + df["الجهة"].dropna().unique().tolist())
-
     filtered = df.copy()
-    if proj != "الكل":
-        filtered = filtered[filtered["اسم المشروع"] == proj]
-    if stat != "الكل":
-        filtered = filtered[filtered["حالة المشروع"] == stat]
-    if ent != "الكل":
-        filtered = filtered[filtered["الجهة"] == ent]
+    f0,f1,f2 = st.columns(3)
+    f3,f4,f5 = st.columns(3)
+
+    with f0:
+        project = st.selectbox("اسم المشروع", ["الكل"] + sorted(filtered["اسم المشروع"].dropna().unique()))
+        if project != "الكل":
+            filtered = filtered[filtered["اسم المشروع"] == project]
+
+    with f1:
+        status = st.selectbox("حالة المشروع", ["الكل"] + sorted(filtered["حالة المشروع"].dropna().unique()))
+        if status != "الكل":
+            filtered = filtered[filtered["حالة المشروع"] == status]
+
+    with f2:
+        ctype = st.selectbox("نوع العقد", ["الكل"] + sorted(filtered["نوع العقد"].dropna().unique()))
+        if ctype != "الكل":
+            filtered = filtered[filtered["نوع العقد"] == ctype]
+
+    with f3:
+        cat = st.selectbox("التصنيف", ["الكل"] + sorted(filtered["التصنيف"].dropna().unique()))
+        if cat != "الكل":
+            filtered = filtered[filtered["التصنيف"] == cat]
+
+    with f4:
+        ent = st.selectbox("الجهة الرسمية", ["الكل"] + sorted(filtered["الجهة"].dropna().unique()))
+        if ent != "الكل":
+            filtered = filtered[filtered["الجهة"] == ent]
+
+    with f5:
+        mun = st.selectbox("البلدية", ["الكل"] + sorted(filtered["البلدية"].dropna().unique()))
+        if mun != "الكل":
+            filtered = filtered[filtered["البلدية"] == mun]
 
     # ===== KPI =====
-    k1,k2,k3 = st.columns(3)
+    k1,k2,k3,k4,k5,k6 = st.columns(6)
+
+    total_contract = filtered["قيمة العقد"].sum()
+    total_claims = filtered["قيمة المستخلصات"].sum()
+    total_remain = filtered["المتبقي من المستخلص"].sum()
+    spend_ratio = (total_claims / total_contract * 100) if total_contract > 0 else 0
+
+    progress_ratio = 0
+    w = filtered.dropna(subset=["قيمة العقد","نسبة الإنجاز"])
+    if not w.empty and w["قيمة العقد"].sum() > 0:
+        progress_ratio = (w["قيمة العقد"] * w["نسبة الإنجاز"]).sum() / w["قيمة العقد"].sum()
+
     k1.markdown(f"<div class='card blue'><h2>{len(filtered)}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
-    k2.markdown(f"<div class='card green'><h2>{filtered['قيمة العقد'].sum():,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
-    k3.markdown(f"<div class='card orange'><h2>{filtered['قيمة المستخلصات'].sum():,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
+    k2.markdown(f"<div class='card green'><h2>{total_contract:,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
+    k3.markdown(f"<div class='card gray'><h2>{total_claims:,.0f}</h2>المستخلصات</div>", unsafe_allow_html=True)
+    k4.markdown(f"<div class='card orange'><h2>{total_remain:,.0f}</h2>المتبقي</div>", unsafe_allow_html=True)
+    k5.markdown(f"<div class='card blue'><h2>{spend_ratio:.1f}%</h2>نسبة الصرف</div>", unsafe_allow_html=True)
+    k6.markdown(f"<div class='card green'><h2>{progress_ratio:.1f}%</h2>نسبة الإنجاز</div>", unsafe_allow_html=True)
+
 
     # ===== حالة المشاريع =====
     st.subheader("حالة المشاريع")
