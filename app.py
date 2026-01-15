@@ -416,43 +416,25 @@ if st.session_state.top_nav == "مشاريع بهجة":
         unsafe_allow_html=True
     )
 
-    # ---------- خريطة المشاريع ----------
-     # ---------- خريطة المشاريع ----------
-    st.subheader("مواقع المشاريع")
+     # ---------- كارد المشاريع المكتملة ----------
+    completed_projects = 0
 
-    # تنظيف أسماء الأعمدة
-    filtered.columns = filtered.columns.astype(str).str.strip()
+    if "نسبة الانجاز" in filtered.columns:
+        completed_projects = filtered[
+            filtered["نسبة الانجاز"] >= 100
+        ].shape[0]
 
-    def find_col(possible_names):
-        for c in filtered.columns:
-            if c.strip() in possible_names:
-                return c
-        return None
+    st.markdown(
+        f"""
+        <div class="card green">
+            <h2>{completed_projects}</h2>
+            المشاريع المكتملة
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    lon_col = find_col([
-        "خط الطول", "خط_الطول", "Longitude", "LONGITUDE",
-        "Lon", "LON", "X", "long", "lon"
-    ])
-
-    lat_col = find_col([
-        "خط العرض", "خط_العرض", "Latitude", "LATITUDE",
-        "Lat", "LAT", "Y", "lat", "latitude"
-    ])
-
-    if lon_col and lat_col:
-        map_df = filtered[[lat_col, lon_col]].copy()
-        map_df = map_df.rename(columns={lat_col: "lat", lon_col: "lon"})
-        map_df["lat"] = pd.to_numeric(map_df["lat"], errors="coerce")
-        map_df["lon"] = pd.to_numeric(map_df["lon"], errors="coerce")
-        map_df = map_df.dropna(subset=["lat", "lon"])
-
-        if not map_df.empty:
-            st.map(map_df[["lat", "lon"]])
-        else:
-            st.info("الإحداثيات موجودة لكن القيم غير مكتملة.")
-    else:
-        st.warning("ملف بهجة لا يحتوي على أعمدة خط الطول / خط العرض.")
-
+ 
     # ---------- الشارتات ----------
     ch1, ch2 = st.columns(2)
 
