@@ -428,6 +428,11 @@ if progress_col:
 
       # ---------- كارد المشاريع المكتملة ----------
     completed_projects = 0
+if progress_col:
+    completed_projects = (
+        pd.to_numeric(filtered[progress_col], errors="coerce") >= 100
+    ).sum()
+
 
     # دعم الاسمين: نسبة الإنجاز / نسبة الانجاز
     progress_col = None
