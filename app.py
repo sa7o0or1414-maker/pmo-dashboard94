@@ -355,17 +355,38 @@ if st.session_state.page == "home":
 
     # ===== تنبيهات =====
     st.subheader("تنبيهات المشاريع")
+
     overdue = filtered[filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر")]
     risk = filtered[
         (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
         (filtered["نسبة الإنجاز"] < 70)
     ]
 
-    b1,b2 = st.columns(2)
-    if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
-        st.dataframe(overdue, use_container_width=True)
-    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
-        st.dataframe(risk.assign(سبب="قرب تاريخ الانتهاء مع انخفاض الإنجاز"), use_container_width=True)
+    b1, b2 = st.columns(2)
+
+    with b1:
+        if st.button(f"المشاريع المتأخرة ({len(overdue)})"):
+            st.session_state.show_overdue = not st.session_state.show_overdue
+
+    with b2:
+        if st.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
+            st.session_state.show_risk = not st.session_state.show_risk
+
+    if st.session_state.show_overdue:
+        if overdue.empty:
+            st.info("لا توجد مشاريع متأخرة")
+        else:
+            st.dataframe(overdue, use_container_width=True)
+
+    if st.session_state.show_risk:
+        if risk.empty:
+            st.info("لا توجد مشاريع متوقع تأخرها")
+        else:
+            st.dataframe(
+                risk.assign(سبب="قرب تاريخ الانتهاء مع انخفاض الإنجاز"),
+                use_container_width=True
+            )
+
 
     # ===== جدول =====
     st.markdown("---")
