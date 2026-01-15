@@ -219,15 +219,16 @@ if st.session_state.page == "login":
 
 # ================= Upload =================
 if st.session_state.page == "upload":
-    st.title("رفع البيانات")
-    excel = st.file_uploader("ملف Excel", ["xlsx"])
-    logo = st.file_uploader("اللوقو", ["png"])
-    if excel:
-        EXCEL_PATH.write_bytes(excel.getbuffer())
-        st.success("تم رفع البيانات")
-    if logo:
-        LOGO_PATH.write_bytes(logo.getbuffer())
-        st.success("تم رفع اللوقو")
+    st.title("رفع الملفات حسب نوع المشاريع")
+    for name, file in DATA_FILES.items():
+        if name == "الافتراضي":
+            continue
+        with st.expander(name):
+            up = st.file_uploader(name, type=["xlsx"], key=file)
+            if up:
+                (DATA_DIR / file).write_bytes(up.getbuffer())
+                st.success("تم رفع الملف")
+    st.stop()
 
 # ================= Home =================
 if st.session_state.page == "home":
