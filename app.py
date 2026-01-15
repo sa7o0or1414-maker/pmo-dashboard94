@@ -7,7 +7,7 @@ import altair as alt
 
 # ================= إعدادات الصفحة =================
 st.set_page_config(
-    page_title="لوحة المعلومات | PMO",
+    page_title="لوحة التحكم | PMO",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -16,9 +16,9 @@ st.set_page_config(
 defaults = {
     "role": "viewer",
     "page": "home",
+    "logo_align": "center",
     "show_overdue": False,
-    "show_risk": False,
-    "top_nav": "الافتراضي"
+    "show_risk": False
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -32,55 +32,102 @@ ASSETS_DIR = Path("assets")
 DATA_DIR.mkdir(exist_ok=True)
 ASSETS_DIR.mkdir(exist_ok=True)
 
+EXCEL_PATH = DATA_DIR / "data.xlsx"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 
-DATA_FILES = {
-    "مشاريع الباب الثالث": "bab3.xlsx",
-    "مشاريع الباب الرابع": "bab4.xlsx",
-    "مشاريع بهجة": "bahja.xlsx",
-    "تطبيق دليل PMD": "pmd.xlsx",
-    "المشاريع المنجزة": "done.xlsx",
-    "مشاريع المحفظة": "portfolio.xlsx",
-    "الدراسات وقوائم التحقق": "studies.xlsx",
-    "دورة المشتريات": "procurement.xlsx",
-    "مواقع المشاريع": "sites.xlsx",
-    "مشاريع الإسكان": "housing.xlsx",
-    "الافتراضي": "data.xlsx"
+# ================= CSS (معدل للبار فقط) =================
+st.markdown("""
+<style>
+html, body, [class*="css"] {
+    direction: rtl;
+    font-family: 'Segoe UI', sans-serif;
+    color: #153e46;
 }
 
-# ================= CSS (كما هو) =================
-st.markdown("""<style>html,body,[class*="css"]{direction:rtl;font-family:'Segoe UI',sans-serif}</style>""", unsafe_allow_html=True)
+/* ===== Sidebar ===== */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0f2d33, #153e46);
+    padding-top: 30px;
+}
+section[data-testid="stSidebar"] * {
+    color: white !important;
+    text-align: center;
+}
+
+/* زر متوازن مع النص */
+section[data-testid="stSidebar"] .stButton {
+    display: flex;
+    justify-content: center;
+}
+
+section[data-testid="stSidebar"] .stButton > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 26px;
+    margin: 10px 0;
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    border: none;
+    font-size: 14px;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    width: auto;
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(255,255,255,0.28);
+    transform: translateY(-1px);
+}
+
+/* ===== Cards ===== */
+.card {
+    background: #fff;
+    padding: 18px;
+    border-radius: 18px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+    text-align: center;
+}
+.card h2 { font-size: 20px; margin: 0; }
+.card.blue { border-top:4px solid #2c7be5; }
+.card.green { border-top:4px solid #00a389; }
+.card.orange { border-top:4px solid #f4a261; }
+.card.gray { border-top:4px solid #6c757d; }
+</style>
+""", unsafe_allow_html=True)
 
 # ================= أدوات =================
-def load_data():
-    file = DATA_FILES.get(st.session_state.top_nav, "data.xlsx")
-    path = DATA_DIR / file
-    if not path.exists():
-        return None
+def img64(path: Path) -> str:
+    return base64.b64encode(path.read_bytes()).decode()
 
-    df = pd.read_excel(path, engine="openpyxl")
+def load_data():
+    if not EXCEL_PATH.exists():
+        return None
+    df = pd.read_excel(EXCEL_PATH, engine="openpyxl")
     df.columns = [str(c).strip() for c in df.columns]
 
     df.rename(columns={
         "إسم المشـــروع": "اسم المشروع",
-        "قيمة المستخلصات المعتمده": "قيمة المستخلصات",
         "تاريخ الانتهاء من المشروع": "تاريخ الانتهاء",
+        "تاريخ تسليم الموقع": "تاريخ التسليم",
+        "قيمة المستخلصات المعتمده": "قيمة المستخلصات",
     }, inplace=True)
 
-    for c in ["قيمة العقد","قيمة المستخلصات","المتبقي من المستخلص","نسبة الإنجاز"]:
+    for c in ["تاريخ الانتهاء","تاريخ التسليم"]:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+
+    for c in ["قيمة العقد","قيمة المستخلصات","المتبقي من المستخلص","نسبة الصرف","نسبة الإنجاز"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
-
-    if "تاريخ الانتهاء" in df.columns:
-        df["تاريخ الانتهاء"] = pd.to_datetime(df["تاريخ الانتهاء"], errors="coerce")
 
     return df
 
 def status_color(s):
-    s = str(s)
-    if "متأخر" in s or "متعثر" in s: return "#e63946"
-    if "مكتمل" in s or "منجز" in s: return "#00a389"
-    if "جاري" in s or "قيد" in s: return "#2c7be5"
+    if any(k in s for k in ["متأخر","متعثر"]): return "#e63946"
+    if any(k in s for k in ["مكتمل","منجز"]): return "#00a389"
+    if any(k in s for k in ["جاري","قيد"]): return "#2c7be5"
+    if any(k in s for k in ["متوقف"]): return "#6c757d"
     return "#f4a261"
 
 def build_status_df(df):
@@ -92,12 +139,18 @@ def build_status_df(df):
 # ================= Sidebar =================
 with st.sidebar:
     if LOGO_PATH.exists():
-        st.image(LOGO_PATH, width=120)
+        st.markdown(
+            f"<img src='data:image/png;base64,{img64(LOGO_PATH)}' width='120' style='margin-bottom:25px;'>",
+            unsafe_allow_html=True
+        )
+
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
+
     if st.session_state.role == "viewer":
         if st.button("تسجيل الدخول"):
             st.session_state.page = "login"
+
     if st.session_state.role == "admin":
         if st.button("رفع البيانات"):
             st.session_state.page = "upload"
@@ -106,28 +159,39 @@ with st.sidebar:
             st.session_state.page = "home"
             st.rerun()
 
-# ================= Home =================
-st.title("لوحة المعلومات")
-
-items = list(DATA_FILES.keys())
-items.remove("الافتراضي")
-
-r1 = st.columns(5)
-for i, name in enumerate(items[:5]):
-    with r1[i]:
-        if st.button(name):
-            st.session_state.top_nav = name
+# ================= Login =================
+if st.session_state.page == "login":
+    st.title("تسجيل الدخول")
+    u = st.text_input("اسم المستخدم")
+    p = st.text_input("كلمة المرور", type="password")
+    if st.button("دخول"):
+        if u == ADMIN_USER and p == ADMIN_PASS:
+            st.session_state.role = "admin"
+            st.session_state.page = "home"
             st.rerun()
+        else:
+            st.error("بيانات غير صحيحة")
 
-df = load_data()
-if df is None:
-    st.warning("لا يوجد ملف لهذا القسم")
-    st.stop()
+# ================= Upload =================
+if st.session_state.page == "upload":
+    st.title("رفع البيانات")
+    excel = st.file_uploader("ملف Excel", ["xlsx"])
+    logo = st.file_uploader("اللوقو", ["png"])
+    if excel:
+        EXCEL_PATH.write_bytes(excel.getbuffer())
+        st.success("تم رفع البيانات")
+    if logo:
+        LOGO_PATH.write_bytes(logo.getbuffer())
+        st.success("تم رفع اللوقو")
 
-# =====================================================================
-# ✅ تحليل مشاريع الباب الثالث (التحليل القديم كما طلبتي)
-# =====================================================================
-if st.session_state.top_nav == "مشاريع الباب الثالث":
+# ================= Home =================
+if st.session_state.page == "home":
+    st.title("لوحة التحكم")
+
+    df = load_data()
+    if df is None:
+        st.warning("يرجى رفع ملف Excel")
+        st.stop()
 
     # ===== الفلاتر =====
     filtered = df.copy()
@@ -224,8 +288,3 @@ if st.session_state.top_nav == "مشاريع الباب الثالث":
     st.markdown("---")
     st.subheader("تفاصيل المشاريع")
     st.dataframe(filtered, use_container_width=True)
-
-    st.stop()   # ⛔ مهم جداً
-
-# ================= باقي التحليل العام (كما هو عندك) =================
-st.info("اختر قسم من الأعلى لعرض التحليل")
