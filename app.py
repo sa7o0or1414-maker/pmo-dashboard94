@@ -427,33 +427,29 @@ if progress_col:
     )
 
       # ---------- كارد المشاريع المكتملة ----------
-    completed_projects = 0
-if progress_col:
+# ================= كارد المشاريع المكتملة (من عمود إكسل) =================
+completed_projects = 0
+
+if "المشاريع المكتملة" in filtered.columns:
     completed_projects = (
-        pd.to_numeric(filtered[progress_col], errors="coerce") >= 100
-    ).sum()
+        filtered["المشاريع المكتملة"]
+        .astype(str)
+        .str.strip()
+        .eq("مكتمل")
+        .sum()
+    )
+else:
+    st.warning("⚠️ عمود (المشاريع المكتملة) غير موجود في ملف الإكسل")
 
-
-    # دعم الاسمين: نسبة الإنجاز / نسبة الانجاز
-    progress_col = None
-    if "نسبة الإنجاز" in filtered.columns:
-        progress_col = "نسبة الإنجاز"
-    elif "نسبة الانجاز" in filtered.columns:
-        progress_col = "نسبة الانجاز"
 
     if progress_col:
         completed_projects = filtered[
             pd.to_numeric(filtered[progress_col], errors="coerce") >= 100
         ].shape[0]
+st.markdown(
+    f"<div class='card green'><h2>{completed_projects}</h2>عدد المشاريع المكتملة</div>",
+    unsafe_allow_html=True
 
-    st.markdown(
-        f"""
-        <div class="card green">
-            <h2>{completed_projects}</h2>
-            المشاريع المكتملة
-        </div>
-        """,
-        unsafe_allow_html=True
     )
 
     # ---------- الشارتات ----------
