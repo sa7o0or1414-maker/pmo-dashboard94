@@ -416,12 +416,19 @@ if st.session_state.top_nav == "مشاريع بهجة":
         unsafe_allow_html=True
     )
 
-     # ---------- كارد المشاريع المكتملة ----------
+      # ---------- كارد المشاريع المكتملة ----------
     completed_projects = 0
 
-    if "نسبة الانجاز" in filtered.columns:
+    # دعم الاسمين: نسبة الإنجاز / نسبة الانجاز
+    progress_col = None
+    if "نسبة الإنجاز" in filtered.columns:
+        progress_col = "نسبة الإنجاز"
+    elif "نسبة الانجاز" in filtered.columns:
+        progress_col = "نسبة الانجاز"
+
+    if progress_col:
         completed_projects = filtered[
-            filtered["نسبة الانجاز"] >= 100
+            pd.to_numeric(filtered[progress_col], errors="coerce") >= 100
         ].shape[0]
 
     st.markdown(
@@ -434,7 +441,6 @@ if st.session_state.top_nav == "مشاريع بهجة":
         unsafe_allow_html=True
     )
 
- 
     # ---------- الشارتات ----------
     ch1, ch2 = st.columns(2)
 
