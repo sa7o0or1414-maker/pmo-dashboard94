@@ -245,7 +245,7 @@ def load_data():
         "تاريخ الانتهاء من المشروع": "تاريخ الانتهاء",
     }, inplace=True)
 
-    for c in ["قيمة العقد","قيمة المستخلصات","نسبة الإنجاز"]:
+    for c in ["قيمة العقد","قيمة المستخلصات","نسبة الانجاز"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
@@ -400,7 +400,7 @@ if st.session_state.top_nav == "مشاريع بهجة":
     total_cost = filtered["التكلفة"].sum()
 # دعم الاسمين: نسبة الإنجاز / نسبة الانجاز
 progress_col = None
-if "نسبة الإنجاز" in filtered.columns:
+if "نسبة الانجاز" in filtered.columns:
     progress_col = "نسبة الإنجاز"
 elif "نسبة الانجاز" in filtered.columns:
     progress_col = "نسبة الانجاز"
