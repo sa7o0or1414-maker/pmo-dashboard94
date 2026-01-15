@@ -348,6 +348,102 @@ df = load_data()
 if df is None:
     st.warning("لا يوجد ملف لهذا القسم")
     st.stop()
+# ================= تحليل خاص بمشاريع بهجة =================
+if st.session_state.top_nav == "مشاريع بهجة":
+
+    st.subheader("تحليل مشاريع بهجة")
+
+    # ---------- فلاتر ----------
+    f1, f2, f3, f4 = st.columns(4)
+
+    with f1:
+        mun = st.selectbox(
+            "البلدية",
+            ["الكل"] + sorted(df["البلدية"].dropna().unique())
+        )
+
+    with f2:
+        project = st.selectbox(
+            "اسم المشروع",
+            ["الكل"] + sorted(df["اسم المشروع"].dropna().unique())
+        )
+
+    with f3:
+        ptype = st.selectbox(
+            "نوع المشروع",
+            ["الكل"] + sorted(df["نوع المشروع"].dropna().unique())
+        )
+
+    with f4:
+        approval = st.selectbox(
+            "حالة الاعتماد",
+            ["الكل"] + sorted(df["حالة الاعتماد"].dropna().unique())
+        )
+
+    filtered = df.copy()
+
+    if mun != "الكل":
+        filtered = filtered[filtered["البلدية"] == mun]
+
+    if project != "الكل":
+        filtered = filtered[filtered["اسم المشروع"] == project]
+
+    if ptype != "الكل":
+        filtered = filtered[filtered["نوع المشروع"] == ptype]
+
+    if approval != "الكل":
+        filtered = filtered[filtered["حالة الاعتماد"] == approval]
+
+    # ---------- كاردات ----------
+    c1, c2, c3 = st.columns(3)
+
+    total_cost = filtered["التكلفة"].sum()
+    avg_progress = filtered["نسبة الانجاز"].mean()
+    projects_count = len(filtered)
+
+    c1.markdown(
+        f"<div class='card blue'><h2>{projects_count}</h2>عدد المشاريع</div>",
+        unsafe_allow_html=True
+    )
+
+    c2.markdown(
+        f"<div class='card green'><h2>{total_cost:,.0f}</h2>إجمالي التكلفة</div>",
+        unsafe_allow_html=True
+    )
+
+    c3.markdown(
+        f"<div class='card orange'><h2>{avg_progress:.1f}%</h2>نسبة الإنجاز</div>",
+        unsafe_allow_html=True
+    )
+
+    # ---------- خريطة المشاريع ----------
+    st.subheader("مواقع المشاريع")
+
+    map_df = filtered[["خط الطول", "خط العرض"]].dropna()
+    map_df.columns = ["lon", "lat"]
+
+    if not map_df.empty:
+        st.map(map_df)
+    else:
+        st.info("لا توجد بيانات موقع")
+
+    # ---------- الشارتات ----------
+    ch1, ch2 = st.columns(2)
+
+    with ch1:
+        st.subheader("حالة المشروع")
+        st.bar_chart(filtered["حالة المشروع"].value_counts())
+
+    with ch2:
+        st.subheader("المستهدف")
+        st.bar_chart(filtered["المستهدف"].value_counts())
+
+    # ---------- جدول ----------
+    st.markdown("---")
+    st.subheader("تفاصيل مشاريع بهجة")
+    st.dataframe(filtered, use_container_width=True)
+
+    st.stop()  # ⛔ يمنع تنفيذ بقية الداشبورد العام
 
 # ================= الفلاتر (مُعادة كما طلبت) =================
 filtered = df.copy()
