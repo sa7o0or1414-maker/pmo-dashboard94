@@ -9,6 +9,7 @@ import altair as alt
 st.set_page_config(
     page_title="لوحة المعلومات  | PMO",
     layout="wide",
+    "page_title": "center",
     initial_sidebar_state="expanded"
 )
 
