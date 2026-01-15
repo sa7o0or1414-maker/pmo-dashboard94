@@ -258,21 +258,31 @@ if st.session_state.page == "home":
     k6.markdown(f"<div class='card green'><h2>{progress_ratio:.1f}%</h2>نسبة الإنجاز</div>", unsafe_allow_html=True)
 
 
-    # ===== حالة المشاريع =====
+   # ===== حالة المشاريع =====
     st.subheader("حالة المشاريع")
-    st.bar_chart(build_status_df(filtered).set_index("الحالة"))
+    sdf = build_status_df(filtered)
+    st.altair_chart(
+        alt.Chart(sdf).mark_bar().encode(
+            x="عدد",
+            y=alt.Y("الحالة", sort="-x"),
+            color=alt.Color("الحالة", scale=alt.Scale(domain=sdf["الحالة"], range=sdf["لون"]))
+        ),
+        use_container_width=True
+    )
 
-    # ===== شارتين جنب بعض =====
+    # ===== الشارتين =====
     c1,c2 = st.columns(2)
     with c1:
-        st.subheader("المشاريع حسب الجهة")
-        st.bar_chart(filtered["الجهة"].value_counts())
+        st.subheader("عدد المشاريع حسب البلدية")
+        st.bar_chart(filtered["البلدية"].value_counts())
+
     with c2:
-        st.subheader("المشاريع حسب الحالة")
-        st.bar_chart(filtered["حالة المشروع"].value_counts())
+        st.subheader("قيمة العقود حسب الجهة الرسمية")
+        st.bar_chart(filtered.groupby("الجهة")["قيمة العقد"].sum())
 
     # ===== تنبيهات =====
-    overdue = filtered[filtered["حالة المشروع"].str.contains("متأخر|متعثر", na=False)]
+    st.subheader("تنبيهات المشاريع")
+    overdue = filtered[filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر")]
     risk = filtered[
         (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
         (filtered["نسبة الإنجاز"] < 70)
@@ -280,15 +290,11 @@ if st.session_state.page == "home":
 
     b1,b2 = st.columns(2)
     if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
-        st.session_state.show_overdue = not st.session_state.show_overdue
-    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
-        st.session_state.show_risk = not st.session_state.show_risk
-
-    if st.session_state.show_overdue:
         st.dataframe(overdue, use_container_width=True)
-    if st.session_state.show_risk:
-        st.dataframe(risk, use_container_width=True)
+    if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
+        st.dataframe(risk.assign(سبب="قرب تاريخ الانتهاء مع انخفاض الإنجاز"), use_container_width=True)
 
+    # ===== جدول =====
     st.markdown("---")
     st.subheader("تفاصيل المشاريع")
     st.dataframe(filtered, use_container_width=True)
