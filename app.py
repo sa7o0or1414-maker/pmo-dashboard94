@@ -246,16 +246,23 @@ items.remove("الافتراضي")
 r1 = st.columns(5)
 for i, name in enumerate(items[:5]):
     with r1[i]:
-        if st.button(name):
+        active = "selected" if st.session_state.top_nav == name else ""
+        st.markdown(f"<div class='topbar-btn {active}'>", unsafe_allow_html=True)
+        if st.button(name, key=f"top_{name}"):
             st.session_state.top_nav = name
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
 r2 = st.columns(5)
 for i, name in enumerate(items[5:]):
     with r2[i]:
-        if st.button(name):
+        active = "selected" if st.session_state.top_nav == name else ""
+        st.markdown(f"<div class='topbar-btn {active}'>", unsafe_allow_html=True)
+        if st.button(name, key=f"top2_{name}"):
             st.session_state.top_nav = name
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
 
 st.caption(f"📊 التحليل الحالي: {st.session_state.top_nav}")
 
