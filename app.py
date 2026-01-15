@@ -56,9 +56,43 @@ st.markdown("""
 html, body, [class*="css"] {
     direction: rtl;
     font-family: 'Segoe UI', sans-serif;
+    color: #153e46;
 }
 h1 { text-align:center; }
 
+/* ===== Sidebar (رجعنا اللون والتنسيق فقط) ===== */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0f2d33, #153e46);
+    padding-top: 24px;
+}
+section[data-testid="stSidebar"] * {
+    color: white !important;
+    text-align: center !important;
+}
+section[data-testid="stSidebar"] .stButton {
+    display: flex;
+    justify-content: center;
+}
+section[data-testid="stSidebar"] .stButton > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 26px;
+    margin: 10px 0;
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    border: none;
+    font-size: 14px;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    width: auto;
+}
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(255,255,255,0.28);
+    transform: translateY(-1px);
+}
+
+/* ===== Cards ===== */
 .card {
     background:#fff;
     padding:18px;
@@ -71,6 +105,7 @@ h1 { text-align:center; }
 .card.orange { border-top:4px solid #f4a261; }
 .card.gray { border-top:4px solid #6c757d; }
 
+/* Top buttons */
 .topbar-btn button{
     padding:10px 18px !important;
     background:rgba(15,45,51,0.12) !important;
