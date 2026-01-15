@@ -7,7 +7,7 @@ import altair as alt
 
 # ================= إعدادات الصفحة =================
 st.set_page_config(
-    page_title="لوحة المعلومات  | PMO",
+    page_title="لوحة المعلومات | PMO",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -16,10 +16,9 @@ st.set_page_config(
 defaults = {
     "role": "viewer",
     "page": "home",
-    "logo_align": "center",
     "show_overdue": False,
     "show_risk": False,
-    "top_nav": ""  # جديد فقط للبار العلوي
+    "top_nav": "الافتراضي"
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -33,146 +32,233 @@ ASSETS_DIR = Path("assets")
 DATA_DIR.mkdir(exist_ok=True)
 ASSETS_DIR.mkdir(exist_ok=True)
 
-EXCEL_PATH = DATA_DIR / "data.xlsx"
 LOGO_PATH = ASSETS_DIR / "logo.png"
 
-# ================= CSS (معدل للبار فقط) =================
+DATA_FILES = {
+    "مشاريع الباب الثالث": "bab3.xlsx",
+    "مشاريع الباب الرابع": "bab4.xlsx",
+    "مشاريع بهجة": "bahja.xlsx",
+    "تطبيق دليل PMD": "pmd.xlsx",
+    "المشاريع المنجزة": "done.xlsx",
+    "مشاريع المحفظة": "portfolio.xlsx",
+    "الدراسات وقوائم التحقق": "studies.xlsx",
+    "دورة المشتريات": "procurement.xlsx",
+    "مواقع المشاريع": "sites.xlsx",
+    "مشاريع الإسكان": "housing.xlsx",
+    "الافتراضي": "data.xlsx"
+}
+
+# ================= CSS =================
 st.markdown("""
+<style>
+/* ===== Sidebar ===== */
+section[data-testid="stSidebar"] {
+    background: #1e5055 !important;
+}
+
+section[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+}
+
+/* أزرار السايدبار */
+section[data-testid="stSidebar"] .stButton > button {
+    background: #1e5055 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.25) !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: #24666c !important;
+}
+
+/* ===== Top Bar Buttons ===== */
+.topbar-btn button {
+    background: #1e5055 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.35) !important;
+}
+
+/* Hover */
+.topbar-btn button:hover {
+    background: #24666c !important;
+    color: #ffffff !important;
+}
+
+/* الزر المختار */
+.topbar-btn.selected button {
+    background: #163f43 !important;
+    color: #ffffff !important;
+    border: 2px solid #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.25) !important;
+}
+</style>
+
+<style>
+/* ===== Top Navigation Buttons ===== */
+.topbar-btn button {
+    min-width: 160px;
+    height: 44px;
+    padding: 8px 18px !important;
+    border-radius: 14px !important;
+    background: #ffffff !important;
+    border: 1.5px solid #d0d7de !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #153e46 !important;
+    white-space: nowrap !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
+    transition: all 0.25s ease-in-out;
+}
+
+/* Hover */
+.topbar-btn button:hover {
+    border-color: #2c7be5 !important;
+    background: #f5f9ff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(44,123,229,0.15) !important;
+}
+
+/* الزر المختار */
+.topbar-btn button:focus,
+.topbar-btn button:active {
+    border: 2px solid #ff8c82 !important;
+    background: #fff5f4 !important;
+    color: #b42318 !important;
+    box-shadow: 0 0 0 4px rgba(255,140,130,0.25) !important;
+}
+
+/* ترتيب الصفوف */
+[data-testid="column"] {
+    display: flex;
+    justify-content: center;
+}
+</style>
+
+<style>
+/* ===== تحسين تنسيق الكاردات ===== */
+.card {
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* الرقم داخل الكارد */
+.card h2 {
+    font-size: 22px !important;
+    font-weight: 700;
+    margin-bottom: 6px;
+    white-space: nowrap;        /* يمنع النزول لسطر */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* النص أسفل الرقم */
+.card div,
+.card span,
+.card p {
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* معالجة الأرقام الكبيرة (ملايين) */
+.card h2 {
+    letter-spacing: -0.5px;
+}
+
+/* توحيد ارتفاع الصف */
+[data-testid="column"] > div {
+    height: 100%;
+}
+</style>
+
 <style>
 html, body, [class*="css"] {
     direction: rtl;
     font-family: 'Segoe UI', sans-serif;
-    color: #153e46;
 }
-/* توسيط عنوان الصفحة */
-h1 {
-    text-align: center !important;
-}
+h1 { text-align:center; }
 
-/* ===== Sidebar ===== */
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0f2d33, #153e46);
-    padding-top: 30px;
-}
-section[data-testid="stSidebar"] * {
-    color: white !important;
-    text-align: center;
-}
-
-/* زر متوازن مع النص */
-section[data-testid="stSidebar"] .stButton {
-    display: flex;
-    justify-content: center;
-}
-
-section[data-testid="stSidebar"] .stButton > button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 26px;
-    margin: 10px 0;
-    background: rgba(255,255,255,0.18);
-    border-radius: 20px;
-    border: none;
-    font-size: 14px;
-    white-space: nowrap;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
-    width: auto;
-}
-
-section[data-testid="stSidebar"] .stButton > button:hover {
-    background: rgba(255,255,255,0.28);
-    transform: translateY(-1px);
-}
-
-/* ===== Cards ===== */
 .card {
-    background: #fff;
-    padding: 18px;
-    border-radius: 18px;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.08);
-    text-align: center;
+    background:#fff;
+    padding:18px;
+    border-radius:18px;
+    box-shadow:0 10px 28px rgba(0,0,0,0.08);
+    text-align:center;
 }
-.card h2 { font-size: 20px; margin: 0; }
 .card.blue { border-top:4px solid #2c7be5; }
 .card.green { border-top:4px solid #00a389; }
 .card.orange { border-top:4px solid #f4a261; }
 .card.gray { border-top:4px solid #6c757d; }
-
-/* ===== Top Bar (جديد) ===== */
-.topbar-wrap{
-    background: linear-gradient(180deg, #0f2d33, #153e46);
-    padding: 14px 12px;
-    border-radius: 18px;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.10);
-    margin-bottom: 18px;
-}
-.topbar-title{
-    color: #ffffff;
-    text-align:center;
-    font-weight:600;
-    margin-bottom: 10px;
-}
-.topbar-note{
-    color: rgba(255,255,255,0.85);
-    text-align:center;
-    font-size: 12px;
-    margin-top: 10px;
-}
-
-/* أزرار البار العلوي متوازنة مثل البار الجانبي */
-.topbar-btn button{
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 10px 18px !important;
-    background: rgba(255,255,255,0.18) !important;
-    border-radius: 18px !important;
-    border: none !important;
+</style>
+<style>
+/* ===== Top Navigation Buttons (بنفس لون البار) ===== */
+.topbar-btn button {
+    background-color: #1e5055 !important;
+    color: #ffffff !important;
+    border: 1.5px solid rgba(255,255,255,0.35) !important;
+    min-width: 160px;
+    height: 44px;
+    padding: 8px 18px !important;
+    border-radius: 14px !important;
     font-size: 13px !important;
+    font-weight: 500 !important;
     white-space: nowrap !important;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.20) !important;
-    width: auto !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    transition: all 0.25s ease-in-out;
 }
-.topbar-btn button:hover{
-    background: rgba(255,255,255,0.28) !important;
-    transform: translateY(-1px);
+
+/* Hover */
+.topbar-btn button:hover {
+    background-color: #24666c !important;
+    color: #ffffff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25) !important;
+}
+
+/* الزر المختار */
+.topbar-btn button:focus,
+.topbar-btn button:active {
+    background-color: #163f43 !important;
+    color: #ffffff !important;
+    border: 2px solid #ffffff !important;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.25) !important;
 }
 </style>
+
 """, unsafe_allow_html=True)
 
 # ================= أدوات =================
-def img64(path: Path) -> str:
-    return base64.b64encode(path.read_bytes()).decode()
-
 def load_data():
-    if not EXCEL_PATH.exists():
+    file = DATA_FILES.get(st.session_state.top_nav, "data.xlsx")
+    path = DATA_DIR / file
+    if not path.exists():
         return None
-    df = pd.read_excel(EXCEL_PATH, engine="openpyxl")
+
+    df = pd.read_excel(path, engine="openpyxl")
     df.columns = [str(c).strip() for c in df.columns]
 
     df.rename(columns={
         "إسم المشـــروع": "اسم المشروع",
-        "تاريخ الانتهاء من المشروع": "تاريخ الانتهاء",
-        "تاريخ تسليم الموقع": "تاريخ التسليم",
         "قيمة المستخلصات المعتمده": "قيمة المستخلصات",
+        "تاريخ الانتهاء من المشروع": "تاريخ الانتهاء",
     }, inplace=True)
 
-    for c in ["تاريخ الانتهاء","تاريخ التسليم"]:
-        if c in df.columns:
-            df[c] = pd.to_datetime(df[c], errors="coerce")
-
-    for c in ["قيمة العقد","قيمة المستخلصات","المتبقي من المستخلص","نسبة الصرف","نسبة الإنجاز"]:
+    for c in ["قيمة العقد","قيمة المستخلصات","نسبة الإنجاز"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    if "تاريخ الانتهاء" in df.columns:
+        df["تاريخ الانتهاء"] = pd.to_datetime(df["تاريخ الانتهاء"], errors="coerce")
 
     return df
 
 def status_color(s):
-    if any(k in s for k in ["متأخر","متعثر"]): return "#e63946"
-    if any(k in s for k in ["مكتمل","منجز"]): return "#00a389"
-    if any(k in s for k in ["جاري","قيد"]): return "#2c7be5"
-    if any(k in s for k in ["متوقف"]): return "#6c757d"
+    s = str(s)
+    if "متأخر" in s or "متعثر" in s: return "#e63946"
+    if "مكتمل" in s or "منجز" in s: return "#00a389"
+    if "جاري" in s or "قيد" in s: return "#2c7be5"
     return "#f4a261"
 
 def build_status_df(df):
@@ -184,10 +270,7 @@ def build_status_df(df):
 # ================= Sidebar =================
 with st.sidebar:
     if LOGO_PATH.exists():
-        st.markdown(
-            f"<img src='data:image/png;base64,{img64(LOGO_PATH)}' width='120' style='margin-bottom:25px;'>",
-            unsafe_allow_html=True
-        )
+        st.image(LOGO_PATH, width=120)
 
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
@@ -216,6 +299,7 @@ if st.session_state.page == "login":
             st.rerun()
         else:
             st.error("بيانات غير صحيحة")
+    st.stop()
 
 # ================= Upload =================
 if st.session_state.page == "upload":
