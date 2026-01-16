@@ -8,7 +8,7 @@ import altair as alt
 st.set_page_config(
     page_title="لوحة المعلومات | PMO",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # ================= Session State =================
@@ -52,39 +52,165 @@ st.markdown("""
 <style>
 html, body, [class*="css"] {
     direction: rtl;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    line-height: 1.5;
+    color: #1d1d1f;
 }
-h1 { text-align:center; }
+@media (prefers-color-scheme: dark) {
+    html, body, [class*="css"] {
+        color: #f5f5f7;
+        background-color: #000000;
+    }
+}
+
+h1 {
+    text-align: center;
+    font-weight: 600;
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    color: #1d1d1f;
+}
+@media (prefers-color-scheme: dark) {
+    h1 {
+        color: #f5f5f7;
+    }
+}
 
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0f2d33, #153e46);
+    background: #f5f5f7;
+    border-right: 1px solid #d2d2d7;
+    box-shadow: 0 0 20px rgba(0,0,0,0.05);
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100vh;
+    transition: width 0.3s ease;
+}
+@media (prefers-color-scheme: dark) {
+    section[data-testid="stSidebar"] {
+        background: #1d1d1f;
+        border-right: 1px solid #424245;
+        box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    }
 }
 section[data-testid="stSidebar"] * {
-    color: white !important;
+    color: #1d1d1f;
+}
+@media (prefers-color-scheme: dark) {
+    section[data-testid="stSidebar"] * {
+        color: #f5f5f7;
+    }
+}
+section[data-testid="stSidebar"]:not([data-expanded="true"]) {
+    width: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
 }
 
 .card {
-    background:#fff;
-    padding:18px;
-    border-radius:18px;
-    box-shadow:0 10px 28px rgba(0,0,0,0.08);
-    text-align:center;
-    min-height:130px;
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    text-align: center;
+    min-height: 140px;
+    border: 1px solid #d2d2d7;
+    transition: all 0.3s ease;
 }
-.card h2 { font-size:22px; margin-bottom:6px; }
-.card.blue { border-top:4px solid #2c7be5; }
-.card.green { border-top:4px solid #00a389; }
-.card.orange { border-top:4px solid #f4a261; }
-.card.gray { border-top:4px solid #6c757d; }
+@media (prefers-color-scheme: dark) {
+    .card {
+        background: #1d1d1f;
+        border: 1px solid #424245;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+@media (prefers-color-scheme: dark) {
+    .card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+}
+.card h2 {
+    font-size: 24px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #1d1d1f;
+}
+@media (prefers-color-scheme: dark) {
+    .card h2 {
+        color: #f5f5f7;
+    }
+}
+.card.blue { border-top: 4px solid #007aff; }
+.card.green { border-top: 4px solid #34c759; }
+.card.orange { border-top: 4px solid #ff9500; }
+.card.gray { border-top: 4px solid #8e8e93; }
 
-.topbar-btn button{
-    background: rgba(21,62,70,0.15) !important;
-    border-radius:16px !important;
-    border:none !important;
-    padding:10px 18px !important;
+.topbar-btn button {
+    background: transparent !important;
+    border: 1px solid #d2d2d7 !important;
+    border-radius: 12px !important;
+    padding: 12px 20px !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    color: #007aff;
 }
-.topbar-btn button:hover{
-    background: rgba(21,62,70,0.3) !important;
+@media (prefers-color-scheme: dark) {
+    .topbar-btn button {
+        border: 1px solid #424245 !important;
+        color: #0a84ff;
+    }
+}
+.topbar-btn button:hover {
+    background: #f5f5f7 !important;
+    border-color: #007aff !important;
+}
+@media (prefers-color-scheme: dark) {
+    .topbar-btn button:hover {
+        background: #2c2c2e !important;
+        border-color: #0a84ff !important;
+    }
+}
+
+/* Mobile-friendly styles */
+@media (max-width: 768px) {
+    .card {
+        padding: 16px;
+        min-height: 120px;
+        margin-bottom: 16px;
+    }
+    .card h2 { font-size: 20px; }
+    h1 { font-size: 2rem; margin-bottom: 1.5rem; }
+    .topbar-btn button {
+        padding: 10px 16px !important;
+        font-size: 14px;
+    }
+    .stHorizontalBlock {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+    }
+    .stHorizontalBlock > div {
+        flex: 1 1 45% !important;
+        min-width: 140px !important;
+        margin-bottom: 12px !important;
+    }
+    .stDataFrame {
+        overflow-x: auto !important;
+        font-size: 12px !important;
+    }
+    .stSelectbox, .stTextInput {
+        font-size: 14px !important;
+    }
+    .stButton button {
+        font-size: 14px !important;
+        padding: 10px 16px !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -212,11 +338,24 @@ if df is None:
 if st.session_state.top_nav == "مشاريع بهجة":
     st.subheader("تحليل مشاريع بهجة")
 
+    # Initialize filter states
+    if "bahja_mun" not in st.session_state: st.session_state.bahja_mun = "الكل"
+    if "bahja_project" not in st.session_state: st.session_state.bahja_project = "الكل"
+    if "bahja_ptype" not in st.session_state: st.session_state.bahja_ptype = "الكل"
+    if "bahja_approval" not in st.session_state: st.session_state.bahja_approval = "الكل"
+
     f1,f2,f3,f4 = st.columns(4)
-    mun = f1.selectbox("البلدية", ["الكل"] + sorted(df["البلدية"].dropna().unique()))
-    project = f2.selectbox("اسم المشروع", ["الكل"] + sorted(df["اسم المشروع"].dropna().unique()))
-    ptype = f3.selectbox("نوع المشروع", ["الكل"] + sorted(df["نوع المشروع"].dropna().unique()))
-    approval = f4.selectbox("حالة الاعتماد", ["الكل"] + sorted(df["حالة الاعتماد"].dropna().unique()))
+    mun = f1.selectbox("البلدية", ["الكل"] + sorted(df["البلدية"].dropna().unique()), key="bahja_mun")
+    project = f2.selectbox("اسم المشروع", ["الكل"] + sorted(df["اسم المشروع"].dropna().unique()), key="bahja_project")
+    ptype = f3.selectbox("نوع المشروع", ["الكل"] + sorted(df["نوع المشروع"].dropna().unique()), key="bahja_ptype")
+    approval = f4.selectbox("حالة الاعتماد", ["الكل"] + sorted(df["حالة الاعتماد"].dropna().unique()), key="bahja_approval")
+
+    if st.button("إعادة تعيين الفلاتر"):
+        st.session_state.bahja_mun = "الكل"
+        st.session_state.bahja_project = "الكل"
+        st.session_state.bahja_ptype = "الكل"
+        st.session_state.bahja_approval = "الكل"
+        st.rerun()
 
     filtered = df.copy()
     if mun!="الكل": filtered = filtered[filtered["البلدية"]==mun]
@@ -251,37 +390,52 @@ filtered = df.copy()
 
 if st.session_state.top_nav in ["مشاريع الباب الثالث", "مشاريع الباب الرابع"]:
 
+    # Initialize filter states
+    if "bab_cat" not in st.session_state: st.session_state.bab_cat = "الكل"
+    if "bab_ent" not in st.session_state: st.session_state.bab_ent = "الكل"
+    if "bab_mun" not in st.session_state: st.session_state.bab_mun = "الكل"
+    if "bab_stt" not in st.session_state: st.session_state.bab_stt = "الكل"
+    if "bab_ct" not in st.session_state: st.session_state.bab_ct = "الكل"
+
     f1,f2,f3,f4,f5 = st.columns(5)
 
     with f1:
         if "التصنيف" in filtered.columns:
-            cat = st.selectbox("التصنيف", ["الكل"] + sorted(filtered["التصنيف"].dropna().unique()))
+            cat = st.selectbox("التصنيف", ["الكل"] + sorted(filtered["التصنيف"].dropna().unique()), key="bab_cat")
             if cat != "الكل":
                 filtered = filtered[filtered["التصنيف"] == cat]
 
     with f2:
         if "الجهة" in filtered.columns:
-            ent = st.selectbox("الجهة", ["الكل"] + sorted(filtered["الجهة"].dropna().unique()))
+            ent = st.selectbox("الجهة", ["الكل"] + sorted(filtered["الجهة"].dropna().unique()), key="bab_ent")
             if ent != "الكل":
                 filtered = filtered[filtered["الجهة"] == ent]
 
     with f3:
         if "البلدية" in filtered.columns:
-            mun = st.selectbox("البلدية", ["الكل"] + sorted(filtered["البلدية"].dropna().unique()))
+            mun = st.selectbox("البلدية", ["الكل"] + sorted(filtered["البلدية"].dropna().unique()), key="bab_mun")
             if mun != "الكل":
                 filtered = filtered[filtered["البلدية"] == mun]
 
     with f4:
         if "حالة المشروع" in filtered.columns:
-            stt = st.selectbox("حالة المشروع", ["الكل"] + sorted(filtered["حالة المشروع"].dropna().unique()))
+            stt = st.selectbox("حالة المشروع", ["الكل"] + sorted(filtered["حالة المشروع"].dropna().unique()), key="bab_stt")
             if stt != "الكل":
                 filtered = filtered[filtered["حالة المشروع"] == stt]
 
     with f5:
         if "نوع العقد" in filtered.columns:
-            ct = st.selectbox("نوع العقد", ["الكل"] + sorted(filtered["نوع العقد"].dropna().unique()))
+            ct = st.selectbox("نوع العقد", ["الكل"] + sorted(filtered["نوع العقد"].dropna().unique()), key="bab_ct")
             if ct != "الكل":
                 filtered = filtered[filtered["نوع العقد"] == ct]
+
+    if st.button("إعادة تعيين الفلاتر"):
+        st.session_state.bab_cat = "الكل"
+        st.session_state.bab_ent = "الكل"
+        st.session_state.bab_mun = "الكل"
+        st.session_state.bab_stt = "الكل"
+        st.session_state.bab_ct = "الكل"
+        st.rerun()
 
 # ================= KPI =================
 k1,k2,k3,k4,k5,k6 = st.columns(6)
