@@ -3,6 +3,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import timedelta
 import altair as alt
+import json
 
 # ================= إعدادات الصفحة =================
 st.set_page_config(
@@ -30,6 +31,36 @@ DATA_DIR = Path("data")
 ASSETS_DIR = Path("assets")
 DATA_DIR.mkdir(exist_ok=True)
 ASSETS_DIR.mkdir(exist_ok=True)
+
+LOGO_WIDTH_FILE = Path("data/logo_width.txt")
+LOGO_ALIGN_FILE = Path("data/logo_align.txt")
+USERS_FILE = Path("data/users.json")
+
+# Load users
+if USERS_FILE.exists():
+    try:
+        users = json.loads(USERS_FILE.read_text())
+    except:
+        users = {"admin": {"password": "1234", "role": "admin"}}
+else:
+    users = {"admin": {"password": "1234", "role": "admin"}}
+
+# Load logo width
+if LOGO_WIDTH_FILE.exists():
+    try:
+        logo_width = int(LOGO_WIDTH_FILE.read_text().strip())
+    except:
+        logo_width = 120
+else:
+    logo_width = 120
+
+# Load logo alignment
+if LOGO_ALIGN_FILE.exists():
+    logo_alignment = LOGO_ALIGN_FILE.read_text().strip()
+    if logo_alignment not in ["left", "center", "right"]:
+        logo_alignment = "center"
+else:
+    logo_alignment = "center"
 
 LOGO_PATH = ASSETS_DIR / "logo.png"
 
@@ -77,7 +108,7 @@ h1 {
 }
 
 section[data-testid="stSidebar"] {
-    background: #f5f5f7;
+    background: #153e46;
     border-right: 1px solid #d2d2d7;
     box-shadow: 0 0 20px rgba(0,0,0,0.05);
     position: absolute;
@@ -88,19 +119,44 @@ section[data-testid="stSidebar"] {
 }
 @media (prefers-color-scheme: dark) {
     section[data-testid="stSidebar"] {
-        background: #1d1d1f;
+        background: #153e46;
         border-right: 1px solid #424245;
         box-shadow: 0 0 20px rgba(0,0,0,0.2);
     }
 }
 section[data-testid="stSidebar"] * {
-    color: #1d1d1f;
+    color: #ffffff;
 }
 @media (prefers-color-scheme: dark) {
     section[data-testid="stSidebar"] * {
-        color: #f5f5f7;
+        color: #ffffff;
     }
 }
+
+section[data-testid="stSidebar"] button {
+    width: 120px !important;
+    height: 50px !important;
+    border-radius: 8px !important;
+    margin: 10px auto !important;
+    display: block !important;
+    background: rgba(255,255,255,0.08) !important;
+    border: 2px solid rgba(255,255,255,0.3) !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    text-align: center !important;
+    padding: 0 !important;
+    line-height: 46px !important; /* adjusted for border */
+    font-weight: 700 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+}
+section[data-testid="stSidebar"] button:hover {
+    background: rgba(255,255,255,0.2) !important;
+    border-color: rgba(255,255,255,0.6) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+    transform: translateY(-2px) !important;
+}
+
 section[data-testid="stSidebar"]:not([data-expanded="true"]) {
     width: 0 !important;
     overflow: hidden !important;
@@ -258,7 +314,16 @@ def build_status_df(df):
 # ================= Sidebar =================
 with st.sidebar:
     if LOGO_PATH.exists():
-        st.image(LOGO_PATH, width=120)
+        if logo_alignment == "center":
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col2:
+                st.image(LOGO_PATH, width=logo_width)
+        elif logo_alignment == "right":
+            col1, col2 = st.columns([1, 1])
+            with col2:
+                st.image(LOGO_PATH, width=logo_width)
+        else:  # left
+            st.image(LOGO_PATH, width=logo_width)
 
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
@@ -268,6 +333,8 @@ with st.sidebar:
             st.session_state.page = "login"
 
     if st.session_state.role == "admin":
+        if st.button("⚙️ الإعدادات"):
+            st.session_state.page = "settings"
         if st.button("رفع البيانات"):
             st.session_state.page = "upload"
         if st.button("تسجيل خروج"):
@@ -281,8 +348,8 @@ if st.session_state.page == "login":
     u = st.text_input("اسم المستخدم")
     p = st.text_input("كلمة المرور", type="password")
     if st.button("دخول"):
-        if u == ADMIN_USER and p == ADMIN_PASS:
-            st.session_state.role = "admin"
+        if u in users and users[u]["password"] == p:
+            st.session_state.role = users[u]["role"]
             st.session_state.page = "home"
             st.rerun()
         else:
@@ -300,6 +367,50 @@ if st.session_state.page == "upload":
             if up:
                 (DATA_DIR / file).write_bytes(up.getbuffer())
                 st.success("تم رفع الملف")
+    st.stop()
+
+# ================= Settings =================
+if st.session_state.page == "settings":
+    st.title("الإعدادات")
+
+    # User Management
+    st.subheader("إدارة المستخدمين")
+    st.write("المستخدمون الحاليون:")
+    for user, data in users.items():
+        st.write(f"- {user}: {data['role']}")
+
+    with st.expander("إضافة مستخدم جديد"):
+        new_user = st.text_input("اسم المستخدم الجديد")
+        new_pass = st.text_input("كلمة المرور", type="password")
+        new_role = st.selectbox("الدور", ["viewer", "admin"])
+        if st.button("إضافة المستخدم"):
+            if new_user and new_pass:
+                users[new_user] = {"password": new_pass, "role": new_role}
+                USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2))
+                st.success("تم إضافة المستخدم")
+                st.rerun()
+            else:
+                st.error("يرجى ملء جميع الحقول")
+
+    # Logo Settings
+    st.subheader("إعدادات الشعار")
+    logo_upload = st.file_uploader("رفع شعار جديد", type=["png", "jpg", "jpeg"])
+    if logo_upload:
+        LOGO_PATH.write_bytes(logo_upload.getbuffer())
+        st.success("تم رفع الشعار")
+
+    current_width = st.slider("عرض الشعار", 50, 200, logo_width)
+    if current_width != logo_width:
+        LOGO_WIDTH_FILE.write_text(str(current_width))
+        st.success("تم حفظ العرض")
+        st.rerun()
+
+    current_align = st.selectbox("محاذاة الشعار", ["left", "center", "right"], index=["left", "center", "right"].index(logo_alignment))
+    if current_align != logo_alignment:
+        LOGO_ALIGN_FILE.write_text(current_align)
+        st.success("تم حفظ المحاذاة")
+        st.rerun()
+
     st.stop()
 
 # ================= Home =================
