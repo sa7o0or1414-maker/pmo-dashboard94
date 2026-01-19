@@ -629,45 +629,6 @@ if st.session_state.top_nav == "مشاريع بهجة":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ================= التنبيهات =================
-    st.subheader("تنبيهات المشاريع")
-
-    overdue_bahja = filtered[filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", na=False)]
-    risk_bahja = filtered[
-        (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
-        (filtered["نسبة الإنجاز"] < 70)
-    ]
-
-    # إضافة سبب التوقع للتأخير في جدول المشاريع المتوقع تأخرها
-    if not risk_bahja.empty:
-        risk_bahja = risk_bahja.copy()
-        risk_bahja["سبب التوقع للتأخير"] = "التاريخ المتبقي أقل من 30 يوماً والإنجاز أقل من 70%"
-
-    b1_bahja, b2_bahja = st.columns(2)
-    if b1_bahja.button(f"المشاريع المتأخرة ({len(overdue_bahja)})"):
-        st.session_state.show_overdue_bahja = not st.session_state.get("show_overdue_bahja", False)
-    if b2_bahja.button(f"المشاريع المتوقع تأخرها ({len(risk_bahja)})"):
-        st.session_state.show_risk_bahja = not st.session_state.get("show_risk_bahja", False)
-
-    if st.session_state.get("show_overdue_bahja", False):
-        st.dataframe(overdue_bahja, use_container_width=True)
-        excel_data_overdue_bahja = create_excel_from_template(overdue_bahja, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
-        st.download_button(
-            label="تحميل المشاريع المتأخرة كExcel",
-            data=excel_data_overdue_bahja,
-            file_name="overdue_bahja_projects.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    if st.session_state.get("show_risk_bahja", False):
-        st.dataframe(risk_bahja, use_container_width=True)
-        excel_data_risk_bahja = create_excel_from_template(risk_bahja, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
-        st.download_button(
-            label="تحميل المشاريع المتوقع تأخرها كExcel",
-            data=excel_data_risk_bahja,
-            file_name="risk_bahja_projects.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
     st.subheader("تفاصيل مشاريع بهجة")
     st.dataframe(filtered, use_container_width=True)
 
@@ -691,14 +652,17 @@ if st.session_state.top_nav in ["مشاريع الباب الثالث", "مشا�
     st.subheader(f"تحليل {st.session_state.top_nav}")
 
     # Initialize filter states
-    if "bab_cat" not in st.session_state: st.session_state.bab_cat = "الكل"
     if "bab_ent" not in st.session_state: st.session_state.bab_ent = "الكل"
     if "bab_mun" not in st.session_state: st.session_state.bab_mun = "الكل"
     if "bab_stt" not in st.session_state: st.session_state.bab_stt = "الكل"
     if "bab_ct" not in st.session_state: st.session_state.bab_ct = "الكل"
 
+    if st.session_state.top_nav == "مشاريع الباب الثالث":
+        if "bab_cat" not in st.session_state: st.session_state.bab_cat = "الكل"
+
     if st.button("إعادة تعيين الفلاتر"):
-        st.session_state.bab_cat = "الكل"
+        if st.session_state.top_nav == "مشاريع الباب الثالث":
+            st.session_state.bab_cat = "الكل"
         st.session_state.bab_ent = "الكل"
         st.session_state.bab_mun = "الكل"
         st.session_state.bab_stt = "الكل"
@@ -706,37 +670,65 @@ if st.session_state.top_nav in ["مشاريع الباب الثالث", "مشا�
         if hasattr(st, 'rerun'):
             st.rerun()
 
-    f1,f2,f3,f4,f5 = st.columns(5)
+    if st.session_state.top_nav == "مشاريع الباب الثالث":
+        f1,f2,f3,f4,f5 = st.columns(5)
 
-    with f1:
-        if "التصنيف" in temp_df.columns:
-            cat_options = ["الكل"] + sorted(temp_df["التصنيف"].dropna().unique())
-            cat = st.selectbox("التصنيف", cat_options, key="bab_cat")
-            temp_df = temp_df[temp_df["التصنيف"] == cat] if cat != "الكل" else temp_df
+        with f1:
+            if "التصنيف" in temp_df.columns:
+                cat_options = ["الكل"] + sorted(temp_df["التصنيف"].dropna().unique())
+                cat = st.selectbox("التصنيف", cat_options, key="bab_cat")
+                temp_df = temp_df[temp_df["التصنيف"] == cat] if cat != "الكل" else temp_df
 
-    with f2:
-        if "الجهة" in temp_df.columns:
-            ent_options = ["الكل"] + sorted(temp_df["الجهة"].dropna().unique())
-            ent = st.selectbox("الجهة", ent_options, key="bab_ent")
-            temp_df = temp_df[temp_df["الجهة"] == ent] if ent != "الكل" else temp_df
+        with f2:
+            if "الجهة" in temp_df.columns:
+                ent_options = ["الكل"] + sorted(temp_df["الجهة"].dropna().unique())
+                ent = st.selectbox("الجهة", ent_options, key="bab_ent")
+                temp_df = temp_df[temp_df["الجهة"] == ent] if ent != "الكل" else temp_df
 
-    with f3:
-        if "البلدية" in temp_df.columns:
-            mun_options = ["الكل"] + sorted(temp_df["البلدية"].dropna().unique())
-            mun = st.selectbox("البلدية", mun_options, key="bab_mun")
-            temp_df = temp_df[temp_df["البلدية"] == mun] if mun != "الكل" else temp_df
+        with f3:
+            if "البلدية" in temp_df.columns:
+                mun_options = ["الكل"] + sorted(temp_df["البلدية"].dropna().unique())
+                mun = st.selectbox("البلدية", mun_options, key="bab_mun")
+                temp_df = temp_df[temp_df["البلدية"] == mun] if mun != "الكل" else temp_df
 
-    with f4:
-        if "حالة المشروع" in temp_df.columns:
-            stt_options = ["الكل"] + sorted(temp_df["حالة المشروع"].dropna().unique())
-            stt = st.selectbox("حالة المشروع", stt_options, key="bab_stt")
-            temp_df = temp_df[temp_df["حالة المشروع"] == stt] if stt != "الكل" else temp_df
+        with f4:
+            if "حالة المشروع" in temp_df.columns:
+                stt_options = ["الكل"] + sorted(temp_df["حالة المشروع"].dropna().unique())
+                stt = st.selectbox("حالة المشروع", stt_options, key="bab_stt")
+                temp_df = temp_df[temp_df["حالة المشروع"] == stt] if stt != "الكل" else temp_df
 
-    with f5:
-        if "نوع العقد" in temp_df.columns:
-            ct_options = ["الكل"] + sorted(temp_df["نوع العقد"].dropna().unique())
-            ct = st.selectbox("نوع العقد", ct_options, key="bab_ct")
-            temp_df = temp_df[temp_df["نوع العقد"] == ct] if ct != "الكل" else temp_df
+        with f5:
+            if "نوع العقد" in temp_df.columns:
+                ct_options = ["الكل"] + sorted(temp_df["نوع العقد"].dropna().unique())
+                ct = st.selectbox("نوع العقد", ct_options, key="bab_ct")
+                temp_df = temp_df[temp_df["نوع العقد"] == ct] if ct != "الكل" else temp_df
+
+    elif st.session_state.top_nav == "مشاريع الباب الرابع":
+        f1,f2,f3,f4 = st.columns(4)
+
+        with f1:
+            if "الجهة" in temp_df.columns:
+                ent_options = ["الكل"] + sorted(temp_df["الجهة"].dropna().unique())
+                ent = st.selectbox("الجهة", ent_options, key="bab_ent")
+                temp_df = temp_df[temp_df["الجهة"] == ent] if ent != "الكل" else temp_df
+
+        with f2:
+            if "البلدية" in temp_df.columns:
+                mun_options = ["الكل"] + sorted(temp_df["البلدية"].dropna().unique())
+                mun = st.selectbox("البلدية", mun_options, key="bab_mun")
+                temp_df = temp_df[temp_df["البلدية"] == mun] if mun != "الكل" else temp_df
+
+        with f3:
+            if "حالة المشروع" in temp_df.columns:
+                stt_options = ["الكل"] + sorted(temp_df["حالة المشروع"].dropna().unique())
+                stt = st.selectbox("حالة المشروع", stt_options, key="bab_stt")
+                temp_df = temp_df[temp_df["حالة المشروع"] == stt] if stt != "الكل" else temp_df
+
+        with f4:
+            if "نوع العقد" in temp_df.columns:
+                ct_options = ["الكل"] + sorted(temp_df["نوع العقد"].dropna().unique())
+                ct = st.selectbox("نوع العقد", ct_options, key="bab_ct")
+                temp_df = temp_df[temp_df["نوع العقد"] == ct] if ct != "الكل" else temp_df
 
 filtered = temp_df
 
@@ -796,10 +788,14 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.subheader("تنبيهات المشاريع")
 
 overdue = filtered[filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", na=False)]
-risk = filtered[
-    (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
-    (filtered["نسبة الإنجاز"] < 70)
-]
+
+if "تاريخ الانتهاء" in filtered.columns and "نسبة الإنجاز" in filtered.columns:
+    risk = filtered[
+        (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
+        (filtered["نسبة الإنجاز"] < 70)
+    ]
+else:
+    risk = pd.DataFrame()
 
 # إضافة سبب التوقع للتأخير في جدول المشاريع المتوقع تأخرها
 if not risk.empty:
