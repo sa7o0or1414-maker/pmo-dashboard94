@@ -106,12 +106,6 @@ html, body, [class*="css"] {
     line-height: 1.5;
     color: #1d1d1f;
 }
-@media (prefers-color-scheme: dark) {
-    html, body, [class*="css"] {
-        color: #f5f5f7;
-        background-color: #000000;
-    }
-}
 
 h1 {
     text-align: center;
@@ -119,11 +113,6 @@ h1 {
     font-size: 2.5rem;
     margin-bottom: 2rem;
     color: #1d1d1f;
-}
-@media (prefers-color-scheme: dark) {
-    h1 {
-        color: #f5f5f7;
-    }
 }
 
 h2, h3, h4, h5, h6 {
@@ -141,20 +130,8 @@ section[data-testid="stSidebar"] {
     height: 100vh;
     transition: width 0.3s ease;
 }
-@media (prefers-color-scheme: dark) {
-    section[data-testid="stSidebar"] {
-        background: #153e46;
-        border-right: 1px solid #424245;
-        box-shadow: 0 0 20px rgba(0,0,0,0.2);
-    }
-}
 section[data-testid="stSidebar"] * {
     color: #ffffff;
-}
-@media (prefers-color-scheme: dark) {
-    section[data-testid="stSidebar"] * {
-        color: #ffffff;
-    }
 }
 
 section[data-testid="stSidebar"] button {
@@ -199,32 +176,15 @@ section[data-testid="stSidebar"]:not([data-expanded="true"]) {
     border: 1px solid #d2d2d7;
     transition: all 0.3s ease;
 }
-@media (prefers-color-scheme: dark) {
-    .card {
-        background: #1d1d1f;
-        border: 1px solid #424245;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    }
-}
 .card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-}
-@media (prefers-color-scheme: dark) {
-    .card:hover {
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    }
 }
 .card h2 {
     font-size: 24px;
     margin-bottom: 8px;
     font-weight: 600;
     color: #1d1d1f;
-}
-@media (prefers-color-scheme: dark) {
-    .card h2 {
-        color: #f5f5f7;
-    }
 }
 .card.blue { border-top: 4px solid #007aff; }
 .card.green { border-top: 4px solid #34c759; }
@@ -243,20 +203,9 @@ section[data-testid="stSidebar"]:not([data-expanded="true"]) {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
 }
-@media (prefers-color-scheme: dark) {
-    .chart-item {
-        background: #1d1d1f;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-}
 .chart-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-@media (prefers-color-scheme: dark) {
-    .chart-item:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-    }
 }
 
 .topbar-btn button {
@@ -268,21 +217,9 @@ section[data-testid="stSidebar"]:not([data-expanded="true"]) {
     transition: all 0.2s ease;
     color: #007aff;
 }
-@media (prefers-color-scheme: dark) {
-    .topbar-btn button {
-        border: 1px solid #424245 !important;
-        color: #0a84ff;
-    }
-}
 .topbar-btn button:hover {
     background: #f5f5f7 !important;
     border-color: #007aff !important;
-}
-@media (prefers-color-scheme: dark) {
-    .topbar-btn button:hover {
-        background: #2c2c2e !important;
-        border-color: #0a84ff !important;
-    }
 }
 
 /* Mobile-friendly styles */
