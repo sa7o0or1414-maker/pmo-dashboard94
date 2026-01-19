@@ -6,6 +6,11 @@ import altair as alt
 import json
 import io
 
+try:
+    import openai
+except ImportError:
+    openai = None
+
 # ================= إعدادات الصفحة =================
 st.set_page_config(
     page_title="لوحة المعلومات | PMO",
@@ -38,6 +43,7 @@ LOGO_ALIGN_FILE = Path("data/logo_align.txt")
 LOGO_EXCEL_FILE = Path("data/logo_excel.txt")
 LOGO_EXCEL_WIDTH_FILE = Path("data/logo_excel_width.txt")
 USERS_FILE = Path("data/users.json")
+API_KEY_FILE = Path("data/api_key.txt")
 
 # Load users
 if USERS_FILE.exists():
@@ -80,8 +86,15 @@ if LOGO_EXCEL_WIDTH_FILE.exists():
 else:
     logo_excel_width = 400
 
+# Load API key
+if API_KEY_FILE.exists():
+    api_key = API_KEY_FILE.read_text().strip()
+else:
+    api_key = ""
+
 LOGO_PATH = ASSETS_DIR / "logo.png"
 LOGO_EXCEL_PATH = ASSETS_DIR / "logo_excel.png"
+TEMPLATE_PATH = ASSETS_DIR / "template.xlsx"
 
 DATA_FILES = {
     "مشاريع الباب الثالث": "bab3.xlsx",
@@ -416,7 +429,162 @@ def create_excel_from_template(filtered_df, template_path, logo_path, show_logo,
     return buffer.getvalue()
 
 
-TEMPLATE_PATH = ASSETS_DIR / "template.xlsx"
+def simple_chatbot_response(prompt, context):
+    prompt_lower = prompt.lower()
+    df = context['filtered']
+
+    # أسئلة عن البيانات والمشاريع
+    if "عدد" in prompt_lower and "مشروع" in prompt_lower:
+        return f"عدد المشاريع الحالي: {len(df)}"
+    elif "قيمة" in prompt_lower and "عقد" in prompt_lower:
+        return f"قيمة العقود الإجمالية: {context['total_contract']:,.0f} ريال"
+    elif "نسبة" in prompt_lower and "إنجاز" in prompt_lower:
+        return f"نسبة الإنجاز العامة: {context['progress_ratio']:.1f}%"
+    elif "متأخر" in prompt_lower or "متعثر" in prompt_lower:
+        overdue_count = len(df[df["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", na=False)])
+        return f"عدد المشاريع المتأخرة/المتعثرة: {overdue_count}"
+    elif "منجز" in prompt_lower or "مكتمل" in prompt_lower:
+        completed_count = len(df[df["حالة المشروع"].astype(str).str.contains("منجز|مكتمل|منتهي", na=False)])
+        return f"عدد المشاريع المنجزة: {completed_count}"
+    elif "جاري" in prompt_lower or "قيد التنفيذ" in prompt_lower:
+        ongoing_count = len(df[df["حالة المشروع"].astype(str).str.contains("جاري|قيد التنفيذ|نشط", na=False)])
+        return f"عدد المشاريع قيد التنفيذ: {ongoing_count}"
+    elif "بلدية" in prompt_lower and "عدد" in prompt_lower:
+        if "البلدية" in df.columns:
+            municipal_counts = df["البلدية"].value_counts().head(5)
+            result = "عدد المشاريع حسب البلدية:\n"
+            for municipal, count in municipal_counts.items():
+                result += f"- {municipal}: {count}\n"
+            return result
+        else:
+            return "لا توجد بيانات البلديات المتاحة"
+    elif "أكبر" in prompt_lower and "قيمة" in prompt_lower:
+        if "قيمة العقد" in df.columns:
+            max_contract = df["قيمة العقد"].max()
+            project_name = df.loc[df["قيمة العقد"].idxmax(), "اسم المشروع"] if "اسم المشروع" in df.columns else "غير محدد"
+            return f"المشروع الأكبر قيمة: {project_name} - {max_contract:,.0f} ريال"
+        else:
+            return "لا توجد بيانات قيم العقود"
+
+    # أسئلة عن الموقع والاستخدام
+    elif "كيف" in prompt_lower and ("استخدم" in prompt_lower or "استخدام" in prompt_lower):
+        return """لاستخدام الموقع:
+• اختر نوع المشاريع من الأزرار العلوية
+• استخدم الفلاتر لتصفية البيانات حسب البلدية، الجهة، الحالة، إلخ
+• اضغط على 'إعادة تعيين الفلاتر' لإزالة جميع الفلاتر
+• استخدم الدردشة للسؤال عن البيانات
+• اضغط على 'تحميل البيانات كExcel' لتصدير البيانات المفلترة"""
+
+    elif "ما هي" in prompt_lower and ("بيانات" in prompt_lower or "معلومات" in prompt_lower):
+        return """البيانات المتاحة تشمل:
+• مشاريع الباب الثالث والرابع
+• مشاريع بهجة
+• تطبيق دليل PMD
+• المشاريع المنجزة
+• مشاريع المحفظة
+• الدراسات وقوائم التحقق
+• دورة المشتريات
+• مواقع المشاريع
+• مشاريع الإسكان"""
+
+    elif "كيف" in prompt_lower and ("تصفية" in prompt_lower or "فلتر" in prompt_lower):
+        return """لتصفية البيانات:
+• اختر نوع المشاريع من الأزرار العلوية
+• استخدم القوائم المنسدلة لتحديد البلدية، الجهة، الحالة، إلخ
+• الفلاتر تتغير ديناميكياً حسب اختياراتك السابقة
+• اضغط 'إعادة تعيين الفلاتر' لإزالة جميع الفلاتر"""
+
+    elif "ما هي" in prompt_lower and ("مؤشرات" in prompt_lower or "kpi" in prompt_lower):
+        return """المؤشرات الرئيسية المعروضة:
+• عدد المشاريع
+• قيمة العقود الإجمالية
+• قيمة المستخلصات
+• المبلغ المتبقي من المستخلصات
+• نسبة الصرف
+• نسبة الإنجاز العامة"""
+
+    elif "كيف" in prompt_lower and ("تحميل" in prompt_lower or "تصدير" in prompt_lower):
+        return """لتحميل البيانات:
+• قم بتصفية البيانات حسب الحاجة
+• اضغط على 'تحميل البيانات كExcel'
+• سيتم تحميل ملف Excel يحتوي على البيانات المفلترة مع الشعار"""
+
+    elif "ما هي" in prompt_lower and ("تنبيهات" in prompt_lower or "مشاريع متأخرة" in prompt_lower):
+        return """التنبيهات تشمل:
+• المشاريع المتأخرة أو المتعثرة
+• المشاريع المتوقع تأخرها (قريبة من التاريخ المحدد ومنخفضة الإنجاز)
+• يمكنك عرض التفاصيل والتحميل كملفات Excel منفصلة"""
+
+    elif "كيف" in prompt_lower and ("تسجيل" in prompt_lower or "دخول" in prompt_lower):
+        return """للتسجيل الدخول:
+• اضغط على 'تسجيل الدخول' في الشريط الجانبي
+• أدخل اسم المستخدم وكلمة المرور
+• المستخدم الافتراضي: admin / 1234
+• المدراء يمكنهم الوصول للإعدادات ورفع البيانات"""
+
+    elif "ما هي" in prompt_lower and ("إعدادات" in prompt_lower or "اعدادات" in prompt_lower):
+        return """الإعدادات المتاحة للمدراء:
+• إدارة المستخدمين (إضافة/حذف)
+• رفع وتخصيص الشعار
+• إعدادات ملفات Excel المُحمّلة
+• معلومات الدردشة"""
+
+    elif "كيف" in prompt_lower and ("رفع" in prompt_lower and "بيانات" in prompt_lower):
+        return """لرفع البيانات:
+• سجل الدخول كمدير
+• اضغط على 'رفع البيانات' في الشريط الجانبي
+• اختر نوع المشاريع وارفع ملف Excel الجديد
+• سيتم استبدال البيانات القديمة بالجديدة"""
+
+    elif "ما هي" in prompt_lower and ("أقسام" in prompt_lower or "اقسام" in prompt_lower):
+        return """أقسام الموقع:
+• الصفحة الرئيسية: عرض البيانات والتحليلات
+• الدردشة: طرح الأسئلة عن البيانات
+• تسجيل الدخول: للمدراء
+• الإعدادات: تخصيص الموقع (للمدراء)
+• رفع البيانات: تحديث ملفات البيانات (للمدراء)"""
+
+    elif "كيف" in prompt_lower and ("دردشة" in prompt_lower or "سؤال" in prompt_lower):
+        return """لاستخدام الدردشة:
+• اضغط على '🤖 اسألني' في الشريط الجانبي
+• اكتب سؤالك باللغة العربية
+• يمكنك السؤال عن عدد المشاريع، القيم، النسب، إلخ
+• الدردشة تعمل بدون الحاجة لمفتاح API"""
+
+    elif "من" in prompt_lower and ("طور" in prompt_lower or "صنع" in prompt_lower):
+        return "تم تطوير هذا الموقع بواسطة فريق PMO لإدارة وتحليل مشاريع البلدية بطريقة احترافية وسهلة الاستخدام."
+
+    elif "ما هي" in prompt_lower and ("ميزات" in prompt_lower or "خصائص" in prompt_lower):
+        return """ميزات الموقع:
+• واجهة عربية مع دعم RTL
+• تحليلات بصرية متقدمة
+• فلاتر ديناميكية
+• تصدير البيانات كملفات Excel
+• نظام دردشة ذكي
+• إدارة المستخدمين
+• تنبيهات المشاريع
+• تصميم متجاوب للهواتف"""
+
+    else:
+        return """أنا مساعد ذكي لموقع لوحة معلومات PMO. يمكنني المساعدة في:
+
+📊 **الأسئلة عن البيانات:**
+• عدد المشاريع، قيمة العقود، نسبة الإنجاز
+• المشاريع المتأخرة، المنجزة، قيد التنفيذ
+• توزيع المشاريع حسب البلدية
+• أكبر المشاريع قيمة
+
+🛠️ **الأسئلة عن الموقع:**
+• كيفية الاستخدام والتصفية
+• المؤشرات والتنبيهات
+• التسجيل الدخول والإعدادات
+• رفع البيانات والتصدير
+
+💡 **نصائح:**
+• جرب أسئلة مثل: "عدد المشاريع"، "كيف أستخدم الموقع"، "ما هي البيانات المتاحة"
+• يمكنك السؤال باللغة العربية الطبيعية
+
+اسأل عن أي شيء يخص الموقع أو البيانات!"""
 
 # ================= Sidebar =================
 with st.sidebar:
@@ -434,6 +602,9 @@ with st.sidebar:
 
     if st.button("الصفحة الرئيسية"):
         st.session_state.page = "home"
+
+    if st.button("🤖 اسألني"):
+        st.session_state.page = "chat"
 
     if st.session_state.role == "viewer":
         if st.button("تسجيل الدخول"):
@@ -535,6 +706,57 @@ if st.session_state.page == "settings":
         LOGO_EXCEL_FILE.write_text(str(show_logo_excel))
         st.success("تم حفظ إعداد اللوجو في Excel")
         st.rerun()
+
+    st.subheader("إعدادات الدردشة")
+    st.write("الدردشة متاحة للجميع بدون الحاجة إلى مفتاح API.")
+
+    st.stop()
+
+# ================= Chat =================
+if st.session_state.page == "chat":
+    st.title("🤖 اسألني")
+
+    # Load data for context
+    df_chat = load_data()
+    if df_chat is None:
+        st.warning("لا توجد بيانات متاحة.")
+        st.stop()
+
+    # Simple filtering for context (can be enhanced)
+    filtered_chat = df_chat.copy()
+    total_contract_chat = filtered_chat["قيمة العقد"].sum() if "قيمة العقد" in filtered_chat.columns else 0
+    progress_ratio_chat = 0
+    if "نسبة الإنجاز" in filtered_chat.columns and "قيمة العقد" in filtered_chat.columns:
+        w = filtered_chat.dropna(subset=["قيمة العقد","نسبة الإنجاز"])
+        if not w.empty:
+            progress_ratio_chat = (w["قيمة العقد"] * w["نسبة الإنجاز"]).sum() / w["قيمة العقد"].sum()
+
+    context = {
+        'filtered': filtered_chat,
+        'total_contract': total_contract_chat,
+        'progress_ratio': progress_ratio_chat
+    }
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # عرض الرسائل السابقة
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # إدخال السؤال
+    if prompt := st.chat_input("اسأل عن التحليل أو اللوحة..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # استخدام الchatbot البسيط
+        answer = simple_chatbot_response(prompt, context)
+
+        st.session_state.messages.append({"role": "assistant", "content": answer})
+        with st.chat_message("assistant"):
+            st.markdown(answer)
 
     st.stop()
 
@@ -741,7 +963,7 @@ total_remain = filtered["المتبقي من المستخلص"].sum() if "الم
 spend_ratio = (total_claims / total_contract * 100) if total_contract > 0 else 0
 
 progress_ratio = 0
-if "نسبة الإنجاز" in filtered.columns:
+if "نسبة الإنجاز" in filtered.columns and "قيمة العقد" in filtered.columns:
     w = filtered.dropna(subset=["قيمة العقد","نسبة الإنجاز"])
     if not w.empty:
         progress_ratio = (w["قيمة العقد"] * w["نسبة الإنجاز"]).sum() / w["قيمة العقد"].sum()
