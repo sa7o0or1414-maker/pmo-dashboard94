@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import timedelta
 import altair as alt
 import json
+import io
 
 # ================= إعدادات الصفحة =================
 st.set_page_config(
@@ -18,7 +19,7 @@ defaults = {
     "page": "home",
     "show_overdue": False,
     "show_risk": False,
-    "top_nav": "الافتراضي"
+    "top_nav": "مشاريع الباب الثالث"
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -34,6 +35,8 @@ ASSETS_DIR.mkdir(exist_ok=True)
 
 LOGO_WIDTH_FILE = Path("data/logo_width.txt")
 LOGO_ALIGN_FILE = Path("data/logo_align.txt")
+LOGO_EXCEL_FILE = Path("data/logo_excel.txt")
+LOGO_EXCEL_WIDTH_FILE = Path("data/logo_excel_width.txt")
 USERS_FILE = Path("data/users.json")
 
 # Load users
@@ -62,7 +65,23 @@ if LOGO_ALIGN_FILE.exists():
 else:
     logo_alignment = "center"
 
+# Load show logo in excel
+if LOGO_EXCEL_FILE.exists():
+    show_logo_in_excel = LOGO_EXCEL_FILE.read_text().strip().lower() == "true"
+else:
+    show_logo_in_excel = True  # افتراضي True
+
+# Load logo excel width
+if LOGO_EXCEL_WIDTH_FILE.exists():
+    try:
+        logo_excel_width = int(LOGO_EXCEL_WIDTH_FILE.read_text().strip())
+    except:
+        logo_excel_width = 400
+else:
+    logo_excel_width = 400
+
 LOGO_PATH = ASSETS_DIR / "logo.png"
+LOGO_EXCEL_PATH = ASSETS_DIR / "logo_excel.png"
 
 DATA_FILES = {
     "مشاريع الباب الثالث": "bab3.xlsx",
@@ -105,6 +124,11 @@ h1 {
     h1 {
         color: #f5f5f7;
     }
+}
+
+h2, h3, h4, h5, h6 {
+    text-align: center !important;
+    color: #153e46 !important;
 }
 
 section[data-testid="stSidebar"] {
@@ -207,6 +231,34 @@ section[data-testid="stSidebar"]:not([data-expanded="true"]) {
 .card.orange { border-top: 4px solid #ff9500; }
 .card.gray { border-top: 4px solid #8e8e93; }
 
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+.chart-item {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+@media (prefers-color-scheme: dark) {
+    .chart-item {
+        background: #1d1d1f;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+}
+.chart-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+@media (prefers-color-scheme: dark) {
+    .chart-item:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+}
+
 .topbar-btn button {
     background: transparent !important;
     border: 1px solid #d2d2d7 !important;
@@ -302,6 +354,7 @@ def status_color(s):
     if "متأخر" in s or "متعثر" in s: return "#e63946"
     if "مكتمل" in s or "منجز" in s: return "#00a389"
     if "جاري" in s or "قيد" in s: return "#2c7be5"
+    if "منتظ" in s: return "#34c759"
     return "#f4a261"
 
 
@@ -310,6 +363,60 @@ def build_status_df(df):
     out = s.value_counts().rename_axis("الحالة").reset_index(name="عدد")
     out["لون"] = out["الحالة"].apply(status_color)
     return out
+
+
+def create_excel_from_template(filtered_df, template_path, logo_path, show_logo, logo_width):
+    import openpyxl
+    from openpyxl.drawing.image import Image
+    from openpyxl.styles import PatternFill, Font
+
+    n_cols = len(filtered_df.columns)
+    last_col_letter = chr(64 + n_cols)
+
+    if template_path.exists():
+        wb = openpyxl.load_workbook(template_path)
+        ws = wb.active
+    else:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        # دمج الأسطر الأولى على عرض الجدول
+        ws.merge_cells(f'A1:{last_col_letter}4')
+        # إضافة اللوجو إذا كان مطلوباً
+        if show_logo:
+            if logo_path.exists():
+                img_path = logo_path
+            elif LOGO_PATH.exists():
+                img_path = LOGO_PATH
+            else:
+                img_path = None
+            if img_path:
+                img = Image(img_path)
+                img.width = logo_width
+                img.height = logo_width // 4
+                ws.add_image(img, 'B2')  # وضع في الوسط
+
+    # إضافة عناوين الأعمدة في صف 5 بلون اللوجو والنص أبيض
+    header_row = 5
+    logo_fill = PatternFill(start_color="153E46", end_color="153E46", fill_type="solid")
+    white_font = Font(color="FFFFFF")
+    for c, header in enumerate(filtered_df.columns, start=1):
+        cell = ws.cell(row=header_row, column=c, value=header)
+        cell.fill = logo_fill
+        cell.font = white_font
+
+    # إضافة البيانات بدءاً من صف 6
+    start_row = 6
+    for r, row in enumerate(filtered_df.itertuples(index=False), start=start_row):
+        for c, val in enumerate(row, start=1):
+            ws.cell(row=r, column=c, value=val)
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+TEMPLATE_PATH = ASSETS_DIR / "template.xlsx"
 
 # ================= Sidebar =================
 with st.sidebar:
@@ -411,6 +518,24 @@ if st.session_state.page == "settings":
         st.success("تم حفظ المحاذاة")
         st.rerun()
 
+    st.subheader("إعدادات ملفات Excel المُحمّلة")
+    logo_excel_upload = st.file_uploader("رفع لوجو لملفات Excel", type=["png", "jpg", "jpeg"], key="logo_excel")
+    if logo_excel_upload:
+        LOGO_EXCEL_PATH.write_bytes(logo_excel_upload.getbuffer())
+        st.success("تم رفع لوجو Excel")
+
+    current_excel_width = st.slider("عرض اللوجو في Excel", 200, 800, logo_excel_width)
+    if current_excel_width != logo_excel_width:
+        LOGO_EXCEL_WIDTH_FILE.write_text(str(current_excel_width))
+        st.success("تم حفظ عرض اللوجو في Excel")
+        st.rerun()
+
+    show_logo_excel = st.checkbox("إظهار اللوجو في ملفات Excel المُحمّلة", value=show_logo_in_excel)
+    if show_logo_excel != show_logo_in_excel:
+        LOGO_EXCEL_FILE.write_text(str(show_logo_excel))
+        st.success("تم حفظ إعداد اللوجو في Excel")
+        st.rerun()
+
     st.stop()
 
 # ================= Home =================
@@ -453,26 +578,31 @@ if st.session_state.top_nav == "مشاريع بهجة":
     if "bahja_mun" not in st.session_state: st.session_state.bahja_mun = "الكل"
     if "bahja_project" not in st.session_state: st.session_state.bahja_project = "الكل"
     if "bahja_ptype" not in st.session_state: st.session_state.bahja_ptype = "الكل"
-    if "bahja_approval" not in st.session_state: st.session_state.bahja_approval = "الكل"
-
-    f1,f2,f3,f4 = st.columns(4)
-    mun = f1.selectbox("البلدية", ["الكل"] + sorted(df["البلدية"].dropna().unique()), key="bahja_mun")
-    project = f2.selectbox("اسم المشروع", ["الكل"] + sorted(df["اسم المشروع"].dropna().unique()), key="bahja_project")
-    ptype = f3.selectbox("نوع المشروع", ["الكل"] + sorted(df["نوع المشروع"].dropna().unique()), key="bahja_ptype")
-    approval = f4.selectbox("حالة الاعتماد", ["الكل"] + sorted(df["حالة الاعتماد"].dropna().unique()), key="bahja_approval")
 
     if st.button("إعادة تعيين الفلاتر"):
         st.session_state.bahja_mun = "الكل"
         st.session_state.bahja_project = "الكل"
         st.session_state.bahja_ptype = "الكل"
-        st.session_state.bahja_approval = "الكل"
-        st.rerun()
+        if hasattr(st, 'rerun'):
+            st.rerun()
 
-    filtered = df.copy()
-    if mun!="الكل": filtered = filtered[filtered["البلدية"]==mun]
-    if project!="الكل": filtered = filtered[filtered["اسم المشروع"]==project]
-    if ptype!="الكل": filtered = filtered[filtered["نوع المشروع"]==ptype]
-    if approval!="الكل": filtered = filtered[filtered["حالة الاعتماد"]==approval]
+    f1,f2,f3 = st.columns(3)
+
+    # Build filter options dynamically
+    mun_options = ["الكل"] + sorted(df["البلدية"].dropna().unique())
+    mun = f1.selectbox("البلدية", mun_options, key="bahja_mun")
+
+    temp_df = df[df["البلدية"] == mun] if mun != "الكل" else df
+    project_options = ["الكل"] + sorted(temp_df["اسم المشروع"].dropna().unique())
+    project = f2.selectbox("اسم المشروع", project_options, key="bahja_project")
+
+    temp_df = temp_df[temp_df["اسم المشروع"] == project] if project != "الكل" else temp_df
+    ptype_options = ["الكل"] + sorted(temp_df["نوع المشروع"].dropna().unique())
+    ptype = f3.selectbox("نوع المشروع", ptype_options, key="bahja_ptype")
+
+    temp_df = temp_df[temp_df["نوع المشروع"] == ptype] if ptype != "الكل" else temp_df
+
+    filtered = temp_df
 
     total_cost = filtered["التكلفة"].sum()
     progress_col = "نسبة الإنجاز" if "نسبة الإنجاز" in filtered.columns else "نسبة الانجاز"
@@ -483,23 +613,82 @@ if st.session_state.top_nav == "مشاريع بهجة":
     c2.markdown(f"<div class='card green'><h2>{total_cost:,.0f}</h2>إجمالي التكلفة</div>", unsafe_allow_html=True)
     c3.markdown(f"<div class='card orange'><h2>{avg_progress:.1f}%</h2>نسبة الإنجاز</div>", unsafe_allow_html=True)
 
-    ch1,ch2 = st.columns(2)
-    with ch1:
-        st.subheader("حالة المشروع")
-        st.bar_chart(filtered["حالة المشروع"].value_counts())
-    with ch2:
-        st.subheader("المستهدف")
-        st.bar_chart(filtered["المستهدف"].value_counts())
+    st.markdown('<div class="chart-grid">', unsafe_allow_html=True)
+
+    # Chart 1
+    st.markdown('<div class="chart-item">', unsafe_allow_html=True)
+    st.subheader("حالة المشروع")
+    st.bar_chart(filtered["حالة المشروع"].value_counts())
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Chart 2
+    st.markdown('<div class="chart-item">', unsafe_allow_html=True)
+    st.subheader("المستهدف")
+    st.bar_chart(filtered["المستهدف"].value_counts())
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ================= التنبيهات =================
+    st.subheader("تنبيهات المشاريع")
+
+    overdue_bahja = filtered[filtered["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", na=False)]
+    risk_bahja = filtered[
+        (filtered["تاريخ الانتهاء"] <= pd.Timestamp.today() + timedelta(days=30)) &
+        (filtered["نسبة الإنجاز"] < 70)
+    ]
+
+    # إضافة سبب التوقع للتأخير في جدول المشاريع المتوقع تأخرها
+    if not risk_bahja.empty:
+        risk_bahja = risk_bahja.copy()
+        risk_bahja["سبب التوقع للتأخير"] = "التاريخ المتبقي أقل من 30 يوماً والإنجاز أقل من 70%"
+
+    b1_bahja, b2_bahja = st.columns(2)
+    if b1_bahja.button(f"المشاريع المتأخرة ({len(overdue_bahja)})"):
+        st.session_state.show_overdue_bahja = not st.session_state.get("show_overdue_bahja", False)
+    if b2_bahja.button(f"المشاريع المتوقع تأخرها ({len(risk_bahja)})"):
+        st.session_state.show_risk_bahja = not st.session_state.get("show_risk_bahja", False)
+
+    if st.session_state.get("show_overdue_bahja", False):
+        st.dataframe(overdue_bahja, use_container_width=True)
+        excel_data_overdue_bahja = create_excel_from_template(overdue_bahja, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
+        st.download_button(
+            label="تحميل المشاريع المتأخرة كExcel",
+            data=excel_data_overdue_bahja,
+            file_name="overdue_bahja_projects.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    if st.session_state.get("show_risk_bahja", False):
+        st.dataframe(risk_bahja, use_container_width=True)
+        excel_data_risk_bahja = create_excel_from_template(risk_bahja, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
+        st.download_button(
+            label="تحميل المشاريع المتوقع تأخرها كExcel",
+            data=excel_data_risk_bahja,
+            file_name="risk_bahja_projects.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
     st.subheader("تفاصيل مشاريع بهجة")
     st.dataframe(filtered, use_container_width=True)
+
+    # زر تحميل البيانات المفلترة كملف Excel باستخدام القالب
+    excel_data = create_excel_from_template(filtered, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
+    st.download_button(
+        label="تحميل البيانات كExcel",
+        data=excel_data,
+        file_name=f"{st.session_state.top_nav.replace(' ', '_')}_filtered.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
     st.stop()
 
 
 # ================= الفلاتر (الباب الثالث + الرابع) =================
-filtered = df.copy()
+temp_df = df.copy()
 
 if st.session_state.top_nav in ["مشاريع الباب الثالث", "مشاريع الباب الرابع"]:
+
+    st.subheader(f"تحليل {st.session_state.top_nav}")
 
     # Initialize filter states
     if "bab_cat" not in st.session_state: st.session_state.bab_cat = "الكل"
@@ -508,45 +697,48 @@ if st.session_state.top_nav in ["مشاريع الباب الثالث", "مشا�
     if "bab_stt" not in st.session_state: st.session_state.bab_stt = "الكل"
     if "bab_ct" not in st.session_state: st.session_state.bab_ct = "الكل"
 
-    f1,f2,f3,f4,f5 = st.columns(5)
-
-    with f1:
-        if "التصنيف" in filtered.columns:
-            cat = st.selectbox("التصنيف", ["الكل"] + sorted(filtered["التصنيف"].dropna().unique()), key="bab_cat")
-            if cat != "الكل":
-                filtered = filtered[filtered["التصنيف"] == cat]
-
-    with f2:
-        if "الجهة" in filtered.columns:
-            ent = st.selectbox("الجهة", ["الكل"] + sorted(filtered["الجهة"].dropna().unique()), key="bab_ent")
-            if ent != "الكل":
-                filtered = filtered[filtered["الجهة"] == ent]
-
-    with f3:
-        if "البلدية" in filtered.columns:
-            mun = st.selectbox("البلدية", ["الكل"] + sorted(filtered["البلدية"].dropna().unique()), key="bab_mun")
-            if mun != "الكل":
-                filtered = filtered[filtered["البلدية"] == mun]
-
-    with f4:
-        if "حالة المشروع" in filtered.columns:
-            stt = st.selectbox("حالة المشروع", ["الكل"] + sorted(filtered["حالة المشروع"].dropna().unique()), key="bab_stt")
-            if stt != "الكل":
-                filtered = filtered[filtered["حالة المشروع"] == stt]
-
-    with f5:
-        if "نوع العقد" in filtered.columns:
-            ct = st.selectbox("نوع العقد", ["الكل"] + sorted(filtered["نوع العقد"].dropna().unique()), key="bab_ct")
-            if ct != "الكل":
-                filtered = filtered[filtered["نوع العقد"] == ct]
-
     if st.button("إعادة تعيين الفلاتر"):
         st.session_state.bab_cat = "الكل"
         st.session_state.bab_ent = "الكل"
         st.session_state.bab_mun = "الكل"
         st.session_state.bab_stt = "الكل"
         st.session_state.bab_ct = "الكل"
-        st.rerun()
+        if hasattr(st, 'rerun'):
+            st.rerun()
+
+    f1,f2,f3,f4,f5 = st.columns(5)
+
+    with f1:
+        if "التصنيف" in temp_df.columns:
+            cat_options = ["الكل"] + sorted(temp_df["التصنيف"].dropna().unique())
+            cat = st.selectbox("التصنيف", cat_options, key="bab_cat")
+            temp_df = temp_df[temp_df["التصنيف"] == cat] if cat != "الكل" else temp_df
+
+    with f2:
+        if "الجهة" in temp_df.columns:
+            ent_options = ["الكل"] + sorted(temp_df["الجهة"].dropna().unique())
+            ent = st.selectbox("الجهة", ent_options, key="bab_ent")
+            temp_df = temp_df[temp_df["الجهة"] == ent] if ent != "الكل" else temp_df
+
+    with f3:
+        if "البلدية" in temp_df.columns:
+            mun_options = ["الكل"] + sorted(temp_df["البلدية"].dropna().unique())
+            mun = st.selectbox("البلدية", mun_options, key="bab_mun")
+            temp_df = temp_df[temp_df["البلدية"] == mun] if mun != "الكل" else temp_df
+
+    with f4:
+        if "حالة المشروع" in temp_df.columns:
+            stt_options = ["الكل"] + sorted(temp_df["حالة المشروع"].dropna().unique())
+            stt = st.selectbox("حالة المشروع", stt_options, key="bab_stt")
+            temp_df = temp_df[temp_df["حالة المشروع"] == stt] if stt != "الكل" else temp_df
+
+    with f5:
+        if "نوع العقد" in temp_df.columns:
+            ct_options = ["الكل"] + sorted(temp_df["نوع العقد"].dropna().unique())
+            ct = st.selectbox("نوع العقد", ct_options, key="bab_ct")
+            temp_df = temp_df[temp_df["نوع العقد"] == ct] if ct != "الكل" else temp_df
+
+filtered = temp_df
 
 # ================= KPI =================
 k1,k2,k3,k4,k5,k6 = st.columns(6)
@@ -571,6 +763,10 @@ k6.markdown(f"<div class='card green'><h2>{progress_ratio:.1f}%</h2>نسبة ا�
 
 # ================= حالة المشاريع =================
 st.subheader("حالة المشاريع")
+st.markdown('<div class="chart-grid">', unsafe_allow_html=True)
+
+# Chart 1
+st.markdown('<div class="chart-item">', unsafe_allow_html=True)
 sdf = build_status_df(filtered)
 st.altair_chart(
     alt.Chart(sdf).mark_bar().encode(
@@ -580,15 +776,21 @@ st.altair_chart(
     ),
     use_container_width=True
 )
+st.markdown('</div>', unsafe_allow_html=True)
 
-# ================= الشارتين =================
-c1,c2 = st.columns(2)
-with c1:
-    st.subheader("عدد المشاريع حسب البلدية")
-    st.bar_chart(filtered["البلدية"].value_counts())
-with c2:
-    st.subheader("عدد المشاريع حسب حالة المشروع")
-    st.bar_chart(filtered["حالة المشروع"].value_counts())
+# Chart 2
+st.markdown('<div class="chart-item">', unsafe_allow_html=True)
+st.subheader("عدد المشاريع حسب البلدية")
+st.bar_chart(filtered["البلدية"].value_counts())
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Chart 3
+st.markdown('<div class="chart-item">', unsafe_allow_html=True)
+st.subheader("عدد المشاريع حسب حالة المشروع")
+st.bar_chart(filtered["حالة المشروع"].value_counts())
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 # ================= التنبيهات =================
 st.subheader("تنبيهات المشاريع")
@@ -599,6 +801,11 @@ risk = filtered[
     (filtered["نسبة الإنجاز"] < 70)
 ]
 
+# إضافة سبب التوقع للتأخير في جدول المشاريع المتوقع تأخرها
+if not risk.empty:
+    risk = risk.copy()
+    risk["سبب التوقع للتأخير"] = "التاريخ المتبقي أقل من 30 يوماً والإنجاز أقل من 70%"
+
 b1,b2 = st.columns(2)
 if b1.button(f"المشاريع المتأخرة ({len(overdue)})"):
     st.session_state.show_overdue = not st.session_state.show_overdue
@@ -607,10 +814,34 @@ if b2.button(f"المشاريع المتوقع تأخرها ({len(risk)})"):
 
 if st.session_state.show_overdue:
     st.dataframe(overdue, use_container_width=True)
+    excel_data_overdue = create_excel_from_template(overdue, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
+    st.download_button(
+        label="تحميل المشاريع المتأخرة كExcel",
+        data=excel_data_overdue,
+        file_name="overdue_projects.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 if st.session_state.show_risk:
     st.dataframe(risk, use_container_width=True)
+    excel_data_risk = create_excel_from_template(risk, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
+    st.download_button(
+        label="تحميل المشاريع المتوقع تأخرها كExcel",
+        data=excel_data_risk,
+        file_name="risk_projects.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 # ================= جدول =================
 st.markdown("---")
 st.subheader("تفاصيل المشاريع")
+
+# زر تحميل البيانات المفلترة كملف Excel باستخدام القالب
+excel_data = create_excel_from_template(filtered, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
+st.download_button(
+    label="تحميل البيانات كExcel",
+    data=excel_data,
+    file_name=f"{st.session_state.top_nav.replace(' ', '_')}_filtered.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
 st.dataframe(filtered, use_container_width=True)
