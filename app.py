@@ -435,36 +435,133 @@ def simple_chatbot_response(prompt, context):
 
     # أسئلة عن البيانات والمشاريع
     if "عدد" in prompt_lower and "مشروع" in prompt_lower:
-        return f"عدد المشاريع الحالي: {len(df)}"
+        project_count = len(df)
+        status_counts = df["حالة المشروع"].value_counts() if "حالة المشروع" in df.columns else {}
+        response = f"📊 **عدد المشاريع الحالي: {project_count}**\n\n"
+        if not status_counts.empty:
+            response += "**توزيع حسب الحالة:**\n"
+            for status, count in status_counts.items():
+                response += f"• {status}: {count}\n"
+        return response
+
     elif "قيمة" in prompt_lower and "عقد" in prompt_lower:
-        return f"قيمة العقود الإجمالية: {context['total_contract']:,.0f} ريال"
+        total_contract = context['total_contract']
+        if "قيمة العقد" in df.columns:
+            top_projects = df.nlargest(5, "قيمة العقد")[["اسم المشروع", "قيمة العقد"]] if "اسم المشروع" in df.columns else df.nlargest(5, "قيمة العقد")[["قيمة العقد"]]
+            response = f"💰 **قيمة العقود الإجمالية: {total_contract:,.0f} ريال**\n\n"
+            response += "**أكبر 5 مشاريع قيمة:**\n"
+            for _, row in top_projects.iterrows():
+                if "اسم المشروع" in row:
+                    response += f"• {row['اسم المشروع']}: {row['قيمة العقد']:,.0f} ريال\n"
+                else:
+                    response += f"• {row['قيمة العقد']:,.0f} ريال\n"
+        else:
+            response = f"💰 **قيمة العقود الإجمالية: {total_contract:,.0f} ريال**"
+        return response
+
     elif "نسبة" in prompt_lower and "إنجاز" in prompt_lower:
-        return f"نسبة الإنجاز العامة: {context['progress_ratio']:.1f}%"
+        progress_ratio = context['progress_ratio']
+        if "نسبة الإنجاز" in df.columns and "قيمة العقد" in df.columns:
+            completed_projects = df[df["نسبة الإنجاز"] >= 100]
+            ongoing_projects = df[(df["نسبة الإنجاز"] > 0) & (df["نسبة الإنجاز"] < 100)]
+            not_started = df[df["نسبة الإنجاز"] == 0]
+            response = f"📈 **نسبة الإنجاز العامة: {progress_ratio:.1f}%**\n\n"
+            response += f"• مشاريع مكتملة (100%): {len(completed_projects)}\n"
+            response += f"• مشاريع قيد التنفيذ: {len(ongoing_projects)}\n"
+            response += f"• مشاريع لم تبدأ: {len(not_started)}\n"
+        else:
+            response = f"📈 **نسبة الإنجاز العامة: {progress_ratio:.1f}%**"
+        return response
+
     elif "متأخر" in prompt_lower or "متعثر" in prompt_lower:
         overdue_count = len(df[df["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", na=False)])
-        return f"عدد المشاريع المتأخرة/المتعثرة: {overdue_count}"
+        if overdue_count > 0 and "اسم المشروع" in df.columns:
+            overdue_projects = df[df["حالة المشروع"].astype(str).str.contains("متأخر|متعثر", na=False)]["اسم المشروع"].head(10)
+            response = f"⚠️ **عدد المشاريع المتأخرة/المتعثرة: {overdue_count}**\n\n"
+            response += "**أسماء المشاريع المتأخرة (أول 10):**\n"
+            for name in overdue_projects:
+                response += f"• {name}\n"
+        else:
+            response = f"⚠️ **عدد المشاريع المتأخرة/المتعثرة: {overdue_count}**"
+        return response
+
     elif "منجز" in prompt_lower or "مكتمل" in prompt_lower:
         completed_count = len(df[df["حالة المشروع"].astype(str).str.contains("منجز|مكتمل|منتهي", na=False)])
-        return f"عدد المشاريع المنجزة: {completed_count}"
+        if completed_count > 0 and "اسم المشروع" in df.columns:
+            completed_projects = df[df["حالة المشروع"].astype(str).str.contains("منجز|مكتمل|منتهي", na=False)]["اسم المشروع"].head(10)
+            response = f"✅ **عدد المشاريع المنجزة: {completed_count}**\n\n"
+            response += "**أسماء المشاريع المنجزة (أول 10):**\n"
+            for name in completed_projects:
+                response += f"• {name}\n"
+        else:
+            response = f"✅ **عدد المشاريع المنجزة: {completed_count}**"
+        return response
+
     elif "جاري" in prompt_lower or "قيد التنفيذ" in prompt_lower:
         ongoing_count = len(df[df["حالة المشروع"].astype(str).str.contains("جاري|قيد التنفيذ|نشط", na=False)])
-        return f"عدد المشاريع قيد التنفيذ: {ongoing_count}"
+        if ongoing_count > 0 and "اسم المشروع" in df.columns:
+            ongoing_projects = df[df["حالة المشروع"].astype(str).str.contains("جاري|قيد التنفيذ|نشط", na=False)]["اسم المشروع"].head(10)
+            response = f"🔄 **عدد المشاريع قيد التنفيذ: {ongoing_count}**\n\n"
+            response += "**أسماء المشاريع قيد التنفيذ (أول 10):**\n"
+            for name in ongoing_projects:
+                response += f"• {name}\n"
+        else:
+            response = f"🔄 **عدد المشاريع قيد التنفيذ: {ongoing_count}**"
+        return response
+
     elif "بلدية" in prompt_lower and "عدد" in prompt_lower:
         if "البلدية" in df.columns:
-            municipal_counts = df["البلدية"].value_counts().head(5)
-            result = "عدد المشاريع حسب البلدية:\n"
+            municipal_counts = df["البلدية"].value_counts().head(10)
+            response = "🏛️ **عدد المشاريع حسب البلدية:**\n\n"
             for municipal, count in municipal_counts.items():
-                result += f"- {municipal}: {count}\n"
-            return result
+                response += f"• {municipal}: {count} مشروع\n"
+            return response
         else:
-            return "لا توجد بيانات البلديات المتاحة"
+            return "🏛️ لا توجد بيانات البلديات المتاحة"
+
     elif "أكبر" in prompt_lower and "قيمة" in prompt_lower:
         if "قيمة العقد" in df.columns:
             max_contract = df["قيمة العقد"].max()
             project_name = df.loc[df["قيمة العقد"].idxmax(), "اسم المشروع"] if "اسم المشروع" in df.columns else "غير محدد"
-            return f"المشروع الأكبر قيمة: {project_name} - {max_contract:,.0f} ريال"
+            response = f"💎 **المشروع الأكبر قيمة:**\n"
+            response += f"• اسم المشروع: {project_name}\n"
+            response += f"• القيمة: {max_contract:,.0f} ريال\n"
+            if "البلدية" in df.columns:
+                municipal = df.loc[df["قيمة العقد"].idxmax(), "البلدية"]
+                response += f"• البلدية: {municipal}\n"
+            if "حالة المشروع" in df.columns:
+                status = df.loc[df["قيمة العقد"].idxmax(), "حالة المشروع"]
+                response += f"• الحالة: {status}\n"
         else:
-            return "لا توجد بيانات قيم العقود"
+            response = "💎 لا توجد بيانات قيم العقود"
+        return response
+
+    elif "قائمة" in prompt_lower and "مشاريع" in prompt_lower:
+        if "اسم المشروع" in df.columns:
+            projects_list = df["اسم المشروع"].head(20).tolist()
+            response = f"📋 **قائمة المشاريع (أول 20):**\n\n"
+            for i, name in enumerate(projects_list, 1):
+                response += f"{i}. {name}\n"
+            if len(df) > 20:
+                response += f"\n... و {len(df) - 20} مشروع آخر"
+        else:
+            response = "📋 لا توجد بيانات أسماء المشاريع"
+        return response
+
+    elif "تحليل" in prompt_lower and "كامل" in prompt_lower:
+        response = "📊 **تحليل شامل للبيانات:**\n\n"
+        response += f"• إجمالي المشاريع: {len(df)}\n"
+        response += f"• إجمالي قيمة العقود: {context['total_contract']:,.0f} ريال\n"
+        response += f"• متوسط نسبة الإنجاز: {context['progress_ratio']:.1f}%\n"
+        response += f"• عدد المشاريع المتأخرة: {len(df[df['حالة المشروع'].astype(str).str.contains('متأخر|متعثر', na=False)])}\n"
+        response += f"• عدد المشاريع المنجزة: {len(df[df['حالة المشروع'].astype(str).str.contains('منجز|مكتمل|منتهي', na=False)])}\n"
+        response += f"• عدد المشاريع قيد التنفيذ: {len(df[df['حالة المشروع'].astype(str).str.contains('جاري|قيد التنفيذ|نشط', na=False)])}\n"
+        if "البلدية" in df.columns:
+            top_municipal = df["البلدية"].value_counts().head(3)
+            response += "\n**أكثر البلديات نشاطاً:**\n"
+            for municipal, count in top_municipal.items():
+                response += f"• {municipal}: {count} مشروع\n"
+        return response
 
     # أسئلة عن الموقع والاستخدام
     elif "كيف" in prompt_lower and ("استخدم" in prompt_lower or "استخدام" in prompt_lower):
@@ -573,6 +670,8 @@ def simple_chatbot_response(prompt, context):
 • المشاريع المتأخرة، المنجزة، قيد التنفيذ
 • توزيع المشاريع حسب البلدية
 • أكبر المشاريع قيمة
+• قائمة المشاريع
+• تحليل شامل
 
 🛠️ **الأسئلة عن الموقع:**
 • كيفية الاستخدام والتصفية
@@ -581,7 +680,7 @@ def simple_chatbot_response(prompt, context):
 • رفع البيانات والتصدير
 
 💡 **نصائح:**
-• جرب أسئلة مثل: "عدد المشاريع"، "كيف أستخدم الموقع"، "ما هي البيانات المتاحة"
+• جرب أسئلة مثل: "عدد المشاريع"، "قائمة المشاريع"، "تحليل كامل"، "كيف أستخدم الموقع"
 • يمكنك السؤال باللغة العربية الطبيعية
 
 اسأل عن أي شيء يخص الموقع أو البيانات!"""
