@@ -356,6 +356,9 @@ def load_data():
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
+    if "السنة" in df.columns:
+        df["السنة"] = pd.to_numeric(df["السنة"], errors="coerce").astype("Int64")
+
     if "تاريخ الانتهاء" in df.columns:
         df["تاريخ الانتهاء"] = pd.to_datetime(df["تاريخ الانتهاء"], errors="coerce")
 
@@ -379,6 +382,9 @@ def build_status_df(df):
 
 
 def create_excel_from_template(filtered_df, template_path, logo_path, show_logo, logo_width):
+    # Fill NaN values to avoid Excel conversion errors
+    filtered_df = filtered_df.astype(object).fillna('')
+
     import openpyxl
     from openpyxl.drawing.image import Image
     from openpyxl.styles import PatternFill, Font
@@ -392,21 +398,23 @@ def create_excel_from_template(filtered_df, template_path, logo_path, show_logo,
     else:
         wb = openpyxl.Workbook()
         ws = wb.active
-        # دمج الأسطر الأولى على عرض الجدول
-        ws.merge_cells(f'A1:{last_col_letter}4')
-        # إضافة اللوجو إذا كان مطلوباً
-        if show_logo:
-            if logo_path.exists():
-                img_path = logo_path
-            elif LOGO_PATH.exists():
-                img_path = LOGO_PATH
-            else:
-                img_path = None
-            if img_path:
-                img = Image(img_path)
-                img.width = logo_width
-                img.height = logo_width // 4
-                ws.add_image(img, 'B2')  # وضع في الوسط
+
+    # دمج الأسطر الأولى على عرض الجدول
+    ws.merge_cells(f'A1:{last_col_letter}4')
+
+    # إضافة اللوجو إذا كان مطلوباً
+    if show_logo:
+        if logo_path.exists():
+            img_path = logo_path
+        elif LOGO_PATH.exists():
+            img_path = LOGO_PATH
+        else:
+            img_path = None
+        if img_path:
+            img = Image(img_path)
+            img.width = logo_width
+            img.height = logo_width // 4
+            ws.add_image(img, 'B2')  # وضع في الوسط
 
     # إضافة عناوين الأعمدة في صف 5 بلون اللوجو والنص أبيض
     header_row = 5
@@ -891,39 +899,60 @@ if df is None:
     st.warning("لا يوجد ملف لهذا القسم")
     st.stop()
 
-# ================= تحليل خاص لمشاريع بهجة (كما هو) =================
+# ================= تحليل خاص لمشاريع بهجة =================
 if st.session_state.top_nav == "مشاريع بهجة":
     st.subheader("تحليل مشاريع بهجة")
 
-    # Initialize filter states
-    if "bahja_mun" not in st.session_state: st.session_state.bahja_mun = "الكل"
-    if "bahja_project" not in st.session_state: st.session_state.bahja_project = "الكل"
-    if "bahja_ptype" not in st.session_state: st.session_state.bahja_ptype = "الكل"
+    # Initialize filter states as lists
+    if "bahja_mun" not in st.session_state: st.session_state.bahja_mun = []
+    if "bahja_project" not in st.session_state: st.session_state.bahja_project = []
+    if "bahja_ptype" not in st.session_state: st.session_state.bahja_ptype = []
 
     if st.button("إعادة تعيين الفلاتر"):
-        st.session_state.bahja_mun = "الكل"
-        st.session_state.bahja_project = "الكل"
-        st.session_state.bahja_ptype = "الكل"
-        if hasattr(st, 'rerun'):
-            st.rerun()
+        st.session_state.bahja_mun = []
+        st.session_state.bahja_project = []
+        st.session_state.bahja_ptype = []
+        st.rerun()
+
+    # Define filter columns and keys
+    filter_cols = {
+        "البلدية": "bahja_mun",
+        "اسم المشروع": "bahja_project",
+        "نوع المشروع": "bahja_ptype"
+    }
+
+    def get_filtered_excluding_bahja(df, filter_cols, exclude_col=None):
+        temp = df.copy()
+        for col, key in filter_cols.items():
+            if col != exclude_col:
+                sel = st.session_state[key]
+                if isinstance(sel, str):
+                    if sel != "الكل" and col in temp.columns:
+                        temp = temp[temp[col] == sel]
+                elif sel and col in temp.columns:
+                    temp = temp[temp[col].isin(sel)]
+        return temp
 
     f1,f2,f3 = st.columns(3)
 
-    # Build filter options dynamically
-    mun_options = ["الكل"] + sorted(df["البلدية"].dropna().unique())
-    mun = f1.selectbox("البلدية", mun_options, key="bahja_mun")
+    # Build options for each filter from data filtered by others
+    mun_filtered = get_filtered_excluding_bahja(df, filter_cols, "البلدية")
+    mun_options = sorted(mun_filtered["البلدية"].dropna().unique()) if "البلدية" in mun_filtered.columns else []
+    mun_default = st.session_state.bahja_mun if isinstance(st.session_state.bahja_mun, list) else ([st.session_state.bahja_mun] if st.session_state.bahja_mun != "الكل" else [])
+    mun = f1.multiselect("البلدية", mun_options, default=mun_default, key="bahja_mun")
 
-    temp_df = df[df["البلدية"] == mun] if mun != "الكل" else df
-    project_options = ["الكل"] + sorted(temp_df["اسم المشروع"].dropna().unique())
-    project = f2.selectbox("اسم المشروع", project_options, key="bahja_project")
+    project_filtered = get_filtered_excluding_bahja(df, filter_cols, "اسم المشروع")
+    project_options = sorted(project_filtered["اسم المشروع"].dropna().unique()) if "اسم المشروع" in project_filtered.columns else []
+    project_default = st.session_state.bahja_project if isinstance(st.session_state.bahja_project, list) else ([st.session_state.bahja_project] if st.session_state.bahja_project != "الكل" else [])
+    project = f2.multiselect("اسم المشروع", project_options, default=project_default, key="bahja_project")
 
-    temp_df = temp_df[temp_df["اسم المشروع"] == project] if project != "الكل" else temp_df
-    ptype_options = ["الكل"] + sorted(temp_df["نوع المشروع"].dropna().unique())
-    ptype = f3.selectbox("نوع المشروع", ptype_options, key="bahja_ptype")
+    ptype_filtered = get_filtered_excluding_bahja(df, filter_cols, "نوع المشروع")
+    ptype_options = sorted(ptype_filtered["نوع المشروع"].dropna().unique()) if "نوع المشروع" in ptype_filtered.columns else []
+    ptype_default = st.session_state.bahja_ptype if isinstance(st.session_state.bahja_ptype, list) else ([st.session_state.bahja_ptype] if st.session_state.bahja_ptype != "الكل" else [])
+    ptype = f3.multiselect("نوع المشروع", ptype_options, default=ptype_default, key="bahja_ptype")
 
-    temp_df = temp_df[temp_df["نوع المشروع"] == ptype] if ptype != "الكل" else temp_df
-
-    filtered = temp_df
+    # Apply all filters
+    filtered = get_filtered_excluding_bahja(df, filter_cols)
 
     total_cost = filtered["التكلفة"].sum()
     progress_col = "نسبة الإنجاز" if "نسبة الإنجاز" in filtered.columns else "نسبة الانجاز"
@@ -965,93 +994,228 @@ if st.session_state.top_nav == "مشاريع بهجة":
     st.stop()
 
 
-# ================= الفلاتر (الباب الثالث + الرابع) =================
-temp_df = df.copy()
+# ================= تحليل خاص لتطبيق دليل PMD =================
+if st.session_state.top_nav == "تطبيق دليل PMD":
+    st.subheader("تحليل تطبيق دليل PMD")
 
+    # Initialize filter states as list
+    if "pmd_mun" not in st.session_state: st.session_state.pmd_mun = []
+
+    if st.button("إعادة تعيين الفلاتر"):
+        st.session_state.pmd_mun = []
+        st.rerun()
+
+    f1 = st.columns(1)[0]
+
+    # Build filter options
+    mun_options = sorted(df["البلدية"].dropna().unique()) if "البلدية" in df.columns else []
+    mun_default = st.session_state.pmd_mun if isinstance(st.session_state.pmd_mun, list) else ([st.session_state.pmd_mun] if st.session_state.pmd_mun != "الكل" else [])
+    mun = f1.multiselect("البلدية", mun_options, default=mun_default, key="pmd_mun")
+
+    # Apply filter
+    filtered = df[df["البلدية"].isin(mun)] if mun else df
+
+    # Calculate metrics
+    num_projects = len(filtered)
+    avg_application = pd.to_numeric(filtered.get("نسبة التطبيق", pd.Series()), errors="coerce").mean() if "نسبة التطبيق" in filtered.columns else 0
+    avg_maturity = pd.to_numeric(filtered.get("نسبة النضج", pd.Series()), errors="coerce").mean() if "نسبة النضج" in filtered.columns else 0
+
+    c1,c2,c3 = st.columns(3)
+    c1.markdown(f"<div class='card blue'><h2>{num_projects}</h2>عدد المشاريع</div>", unsafe_allow_html=True)
+    c2.markdown(f"<div class='card green'><h2>{avg_application:.1f}%</h2>نسبة التطبيق</div>", unsafe_allow_html=True)
+    c3.markdown(f"<div class='card orange'><h2>{avg_maturity:.1f}%</h2>نسبة النضج</div>", unsafe_allow_html=True)
+
+    st.subheader("تفاصيل تطبيق دليل PMD")
+    # Show table with specific columns, ensuring اسم المشروع and المقاول are first
+    if "اسم المشروع" in filtered.columns and "المقاول" in filtered.columns:
+        display_cols = ["اسم المشروع", "المقاول"] + [col for col in filtered.columns if col not in ["اسم المشروع", "المقاول"]]
+    else:
+        display_cols = filtered.columns
+    st.dataframe(filtered[display_cols], use_container_width=True)
+
+    # زر تحميل البيانات المفلترة كملف Excel باستخدام القالب
+    excel_data = create_excel_from_template(filtered, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
+    st.download_button(
+        label="تحميل البيانات كExcel",
+        data=excel_data,
+        file_name=f"{st.session_state.top_nav.replace(' ', '_')}_filtered.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    st.stop()
+
+
+# ================= تحليل خاص للمشاريع المنجزة =================
+if st.session_state.top_nav == "المشاريع المنجزة":
+    st.subheader("تحليل المشاريع المنجزة")
+
+    # Initialize filter states as lists for multiselect
+    if "done_cat" not in st.session_state: st.session_state.done_cat = []
+    if "done_mun" not in st.session_state: st.session_state.done_mun = []
+    if "done_budget" not in st.session_state: st.session_state.done_budget = []
+    if "done_year" not in st.session_state: st.session_state.done_year = []
+    if "done_project" not in st.session_state: st.session_state.done_project = []
+
+    if st.button("إعادة تعيين الفلاتر"):
+        st.session_state.done_cat = []
+        st.session_state.done_mun = []
+        st.session_state.done_budget = []
+        st.session_state.done_year = []
+        st.session_state.done_project = []
+        st.rerun()
+
+    # Define filter columns and keys
+    filter_cols = {
+        "التصنيف": "done_cat",
+        "البلدية": "done_mun",
+        "ميزانية المشروع": "done_budget",
+        "السنة": "done_year",
+        "اسم المشروع": "done_project"
+    }
+
+    def get_filtered_excluding(df, filter_cols, exclude_col=None):
+        temp = df.copy()
+        for col, key in filter_cols.items():
+            if col != exclude_col:
+                sel = st.session_state[key]
+                if isinstance(sel, str):
+                    if sel != "الكل" and col in temp.columns:
+                        temp = temp[temp[col] == sel]
+                elif sel and col in temp.columns:  # list and not empty
+                    temp = temp[temp[col].isin(sel)]
+        return temp
+
+    f1,f2,f3,f4,f5 = st.columns(5)
+
+    # Build options for each filter from data filtered by others
+    cat_filtered = get_filtered_excluding(df, filter_cols, "التصنيف")
+    cat_options = sorted(cat_filtered["التصنيف"].dropna().unique()) if "التصنيف" in cat_filtered.columns else []
+    cat_default = st.session_state.done_cat if isinstance(st.session_state.done_cat, list) else ([st.session_state.done_cat] if st.session_state.done_cat != "الكل" else [])
+    cat = f1.multiselect("التصنيف", cat_options, default=cat_default, key="done_cat")
+
+    mun_filtered = get_filtered_excluding(df, filter_cols, "البلدية")
+    mun_options = sorted(mun_filtered["البلدية"].dropna().unique()) if "البلدية" in mun_filtered.columns else []
+    mun_default = st.session_state.done_mun if isinstance(st.session_state.done_mun, list) else ([st.session_state.done_mun] if st.session_state.done_mun != "الكل" else [])
+    mun = f2.multiselect("البلدية", mun_options, default=mun_default, key="done_mun")
+
+    budget_filtered = get_filtered_excluding(df, filter_cols, "ميزانية المشروع")
+    budget_options = sorted(budget_filtered["ميزانية المشروع"].dropna().unique()) if "ميزانية المشروع" in budget_filtered.columns else []
+    budget_default = st.session_state.done_budget if isinstance(st.session_state.done_budget, list) else ([st.session_state.done_budget] if st.session_state.done_budget != "الكل" else [])
+    budget = f3.multiselect("ميزانية المشروع", budget_options, default=budget_default, key="done_budget")
+
+    year_filtered = get_filtered_excluding(df, filter_cols, "السنة")
+    year_options = sorted(year_filtered["السنة"].dropna().unique()) if "السنة" in year_filtered.columns else []
+    year_default = st.session_state.done_year if isinstance(st.session_state.done_year, list) else ([st.session_state.done_year] if st.session_state.done_year != "الكل" else [])
+    year = f4.multiselect("السنة", year_options, default=year_default, key="done_year")
+
+    project_filtered = get_filtered_excluding(df, filter_cols, "اسم المشروع")
+    project_options = sorted(project_filtered["اسم المشروع"].dropna().unique()) if "اسم المشروع" in project_filtered.columns else []
+    project_default = st.session_state.done_project if isinstance(st.session_state.done_project, list) else ([st.session_state.done_project] if st.session_state.done_project != "الكل" else [])
+    project = f5.multiselect("اسم المشروع", project_options, default=project_default, key="done_project")
+
+    # Apply all filters to get final filtered data
+    filtered = get_filtered_excluding(df, filter_cols)
+
+    # Calculate completed project counts from budget column
+    num_bab3_completed = len(df[df["ميزانية المشروع"].astype(str).str.contains("الباب الثالث", na=False)]) if "ميزانية المشروع" in df.columns else 0
+    num_bab4_completed = len(df[df["ميزانية المشروع"].astype(str).str.contains("الباب الرابع", na=False)]) if "ميزانية المشروع" in df.columns else 0
+
+    # Calculate metrics
+    total_contract = filtered["قيمة العقد"].sum() if "قيمة العقد" in filtered.columns else 0
+    avg_progress = pd.to_numeric(filtered.get("نسبة الإنجاز", filtered.get("نسبة الانجاز", pd.Series())), errors="coerce").mean()
+
+    c1,c2,c3,c4 = st.columns(4)
+    c1.markdown(f"<div class='card blue'><h2>{total_contract:,.0f}</h2>قيمة العقود</div>", unsafe_allow_html=True)
+    c2.markdown(f"<div class='card green'><h2>{avg_progress:.1f}%</h2>نسبة الإنجاز</div>", unsafe_allow_html=True)
+    c3.markdown(f"<div class='card orange'><h2>{num_bab3_completed}</h2>مشاريع الباب الثالث المنجزة</div>", unsafe_allow_html=True)
+    c4.markdown(f"<div class='card gray'><h2>{num_bab4_completed}</h2>مشاريع الباب الرابع المنجزة</div>", unsafe_allow_html=True)
+
+    st.subheader("عدد المشاريع في كل بلدية")
+    st.bar_chart(filtered["البلدية"].value_counts())
+
+    st.subheader("تفاصيل المشاريع المنجزة")
+    st.dataframe(filtered, use_container_width=True)
+
+    # زر تحميل البيانات المفلترة كملف Excel باستخدام القالب
+    excel_data = create_excel_from_template(filtered, TEMPLATE_PATH, LOGO_EXCEL_PATH, show_logo_in_excel, logo_excel_width)
+    st.download_button(
+        label="تحميل البيانات كExcel",
+        data=excel_data,
+        file_name=f"{st.session_state.top_nav.replace(' ', '_')}_filtered.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    st.stop()
+
+
+# ================= الفلاتر (الباب الثالث + الرابع) =================
 if st.session_state.top_nav in ["مشاريع الباب الثالث", "مشاريع الباب الرابع"]:
 
     st.subheader(f"تحليل {st.session_state.top_nav}")
 
-    # Initialize filter states
-    if "bab_ent" not in st.session_state: st.session_state.bab_ent = "الكل"
-    if "bab_mun" not in st.session_state: st.session_state.bab_mun = "الكل"
-    if "bab_stt" not in st.session_state: st.session_state.bab_stt = "الكل"
-    if "bab_ct" not in st.session_state: st.session_state.bab_ct = "الكل"
-
-    if st.session_state.top_nav == "مشاريع الباب الثالث":
-        if "bab_cat" not in st.session_state: st.session_state.bab_cat = "الكل"
+    # Initialize filter states as lists
+    if "bab_cat" not in st.session_state: st.session_state.bab_cat = []
+    if "bab_ent" not in st.session_state: st.session_state.bab_ent = []
+    if "bab_mun" not in st.session_state: st.session_state.bab_mun = []
+    if "bab_stt" not in st.session_state: st.session_state.bab_stt = []
+    if "bab_ct" not in st.session_state: st.session_state.bab_ct = []
 
     if st.button("إعادة تعيين الفلاتر"):
-        if st.session_state.top_nav == "مشاريع الباب الثالث":
-            st.session_state.bab_cat = "الكل"
-        st.session_state.bab_ent = "الكل"
-        st.session_state.bab_mun = "الكل"
-        st.session_state.bab_stt = "الكل"
-        st.session_state.bab_ct = "الكل"
-        if hasattr(st, 'rerun'):
-            st.rerun()
+        st.session_state.bab_cat = []
+        st.session_state.bab_ent = []
+        st.session_state.bab_mun = []
+        st.session_state.bab_stt = []
+        st.session_state.bab_ct = []
+        st.rerun()
 
+    # Define filter columns based on section
     if st.session_state.top_nav == "مشاريع الباب الثالث":
-        f1,f2,f3,f4,f5 = st.columns(5)
+        filter_cols = {
+            "التصنيف": "bab_cat",
+            "الجهة": "bab_ent",
+            "البلدية": "bab_mun",
+            "حالة المشروع": "bab_stt",
+            "نوع العقد": "bab_ct"
+        }
+        num_cols = 5
+    else:  # Bab4
+        filter_cols = {
+            "الجهة": "bab_ent",
+            "البلدية": "bab_mun",
+            "حالة المشروع": "bab_stt",
+            "نوع العقد": "bab_ct"
+        }
+        num_cols = 4
 
-        with f1:
-            if "التصنيف" in temp_df.columns:
-                cat_options = ["الكل"] + sorted(temp_df["التصنيف"].dropna().unique())
-                cat = st.selectbox("التصنيف", cat_options, key="bab_cat")
-                temp_df = temp_df[temp_df["التصنيف"] == cat] if cat != "الكل" else temp_df
+    # Labels for filters
+    labels = {
+        "الجهة": "الجهة الرسمية"
+    }
 
-        with f2:
-            if "الجهة" in temp_df.columns:
-                ent_options = ["الكل"] + sorted(temp_df["الجهة"].dropna().unique())
-                ent = st.selectbox("الجهة", ent_options, key="bab_ent")
-                temp_df = temp_df[temp_df["الجهة"] == ent] if ent != "الكل" else temp_df
+    def get_filtered_excluding_bab(df, filter_cols, exclude_col=None):
+        temp = df.copy()
+        for col, key in filter_cols.items():
+            if col != exclude_col:
+                sel = st.session_state[key]
+                if isinstance(sel, str):
+                    if sel != "الكل" and col in temp.columns:
+                        temp = temp[temp[col] == sel]
+                elif sel and col in temp.columns:
+                    temp = temp[temp[col].isin(sel)]
+        return temp
 
-        with f3:
-            if "البلدية" in temp_df.columns:
-                mun_options = ["الكل"] + sorted(temp_df["البلدية"].dropna().unique())
-                mun = st.selectbox("البلدية", mun_options, key="bab_mun")
-                temp_df = temp_df[temp_df["البلدية"] == mun] if mun != "الكل" else temp_df
+    f_cols = st.columns(num_cols)
 
-        with f4:
-            if "حالة المشروع" in temp_df.columns:
-                stt_options = ["الكل"] + sorted(temp_df["حالة المشروع"].dropna().unique())
-                stt = st.selectbox("حالة المشروع", stt_options, key="bab_stt")
-                temp_df = temp_df[temp_df["حالة المشروع"] == stt] if stt != "الكل" else temp_df
+    # Build multiselect for each filter
+    for i, (col_name, key) in enumerate(filter_cols.items()):
+        with f_cols[i]:
+            filtered_ex = get_filtered_excluding_bab(df, filter_cols, col_name)
+            options = sorted(filtered_ex[col_name].dropna().unique()) if col_name in filtered_ex.columns else []
+            default_val = st.session_state[key] if isinstance(st.session_state[key], list) else ([st.session_state[key]] if st.session_state[key] != "الكل" else [])
+            st.multiselect(labels.get(col_name, col_name), options, default=default_val, key=key)
 
-        with f5:
-            if "نوع العقد" in temp_df.columns:
-                ct_options = ["الكل"] + sorted(temp_df["نوع العقد"].dropna().unique())
-                ct = st.selectbox("نوع العقد", ct_options, key="bab_ct")
-                temp_df = temp_df[temp_df["نوع العقد"] == ct] if ct != "الكل" else temp_df
-
-    elif st.session_state.top_nav == "مشاريع الباب الرابع":
-        f1,f2,f3,f4 = st.columns(4)
-
-        with f1:
-            if "الجهة" in temp_df.columns:
-                ent_options = ["الكل"] + sorted(temp_df["الجهة"].dropna().unique())
-                ent = st.selectbox("الجهة", ent_options, key="bab_ent")
-                temp_df = temp_df[temp_df["الجهة"] == ent] if ent != "الكل" else temp_df
-
-        with f2:
-            if "البلدية" in temp_df.columns:
-                mun_options = ["الكل"] + sorted(temp_df["البلدية"].dropna().unique())
-                mun = st.selectbox("البلدية", mun_options, key="bab_mun")
-                temp_df = temp_df[temp_df["البلدية"] == mun] if mun != "الكل" else temp_df
-
-        with f3:
-            if "حالة المشروع" in temp_df.columns:
-                stt_options = ["الكل"] + sorted(temp_df["حالة المشروع"].dropna().unique())
-                stt = st.selectbox("حالة المشروع", stt_options, key="bab_stt")
-                temp_df = temp_df[temp_df["حالة المشروع"] == stt] if stt != "الكل" else temp_df
-
-        with f4:
-            if "نوع العقد" in temp_df.columns:
-                ct_options = ["الكل"] + sorted(temp_df["نوع العقد"].dropna().unique())
-                ct = st.selectbox("نوع العقد", ct_options, key="bab_ct")
-                temp_df = temp_df[temp_df["نوع العقد"] == ct] if ct != "الكل" else temp_df
-
-filtered = temp_df
+    # Apply all filters
+    filtered = get_filtered_excluding_bab(df, filter_cols)
 
 # ================= KPI =================
 k1,k2,k3,k4,k5,k6 = st.columns(6)
