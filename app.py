@@ -968,13 +968,23 @@ if st.session_state.top_nav == "مشاريع بهجة":
     # Chart 1
     st.markdown('<div class="chart-item">', unsafe_allow_html=True)
     st.subheader("حالة المشروع")
-    st.bar_chart(filtered["حالة المشروع"].value_counts())
+    status_df = filtered["حالة المشروع"].value_counts().reset_index()
+    status_df.columns = ['حالة المشروع', 'count']
+    base = alt.Chart(status_df).encode(x=alt.X('حالة المشروع', axis=alt.Axis(labelAngle=0)), y='count')
+    shadow = base.mark_bar(color='rgba(0,0,0,0.3)', xOffset=2, yOffset=-2)
+    bar = base.mark_bar(color='steelblue')
+    st.altair_chart(shadow + bar, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Chart 2
     st.markdown('<div class="chart-item">', unsafe_allow_html=True)
     st.subheader("المستهدف")
-    st.bar_chart(filtered["المستهدف"].value_counts())
+    target_df = filtered["المستهدف"].value_counts().reset_index()
+    target_df.columns = ['المستهدف', 'count']
+    base = alt.Chart(target_df).encode(x=alt.X('المستهدف', axis=alt.Axis(labelAngle=0)), y='count')
+    shadow = base.mark_bar(color='rgba(0,0,0,0.3)', xOffset=2, yOffset=-2)
+    bar = base.mark_bar(color='steelblue')
+    st.altair_chart(shadow + bar, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -1131,7 +1141,12 @@ if st.session_state.top_nav == "المشاريع المنجزة":
     c4.markdown(f"<div class='card gray'><h2>{num_bab4_completed}</h2>مشاريع الباب الرابع المنجزة</div>", unsafe_allow_html=True)
 
     st.subheader("عدد المشاريع في كل بلدية")
-    st.bar_chart(filtered["البلدية"].value_counts())
+    mun_df = filtered["البلدية"].value_counts().reset_index()
+    mun_df.columns = ['البلدية', 'count']
+    base = alt.Chart(mun_df).encode(x=alt.X('البلدية', axis=alt.Axis(labelAngle=0)), y='count')
+    shadow = base.mark_bar(color='rgba(0,0,0,0.3)', xOffset=2, yOffset=-2)
+    bar = base.mark_bar(color='steelblue')
+    st.altair_chart(shadow + bar, use_container_width=True)
 
     st.subheader("تفاصيل المشاريع المنجزة")
     st.dataframe(filtered, use_container_width=True)
@@ -1245,26 +1260,37 @@ st.markdown('<div class="chart-grid">', unsafe_allow_html=True)
 # Chart 1
 st.markdown('<div class="chart-item">', unsafe_allow_html=True)
 sdf = build_status_df(filtered)
-st.altair_chart(
-    alt.Chart(sdf).mark_bar().encode(
-        x="عدد",
-        y=alt.Y("الحالة", sort="-x"),
-        color=alt.Color("الحالة", scale=alt.Scale(domain=sdf["الحالة"], range=sdf["لون"]))
-    ),
-    use_container_width=True
+base = alt.Chart(sdf).encode(
+    x="عدد",
+    y=alt.Y("الحالة", sort="-x"),
+    color=alt.Color("الحالة", scale=alt.Scale(domain=sdf["الحالة"], range=sdf["لون"]))
 )
+shadow = base.mark_bar(color='rgba(0,0,0,0.3)', xOffset=2, yOffset=-2)
+bar = base.mark_bar()
+text = base.mark_text(align='left', dx=5, color='black').encode(text='عدد')
+st.altair_chart((shadow + bar + text), use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Chart 2
 st.markdown('<div class="chart-item">', unsafe_allow_html=True)
 st.subheader("عدد المشاريع حسب البلدية")
-st.bar_chart(filtered["البلدية"].value_counts())
+mun_df = filtered["البلدية"].value_counts().reset_index()
+mun_df.columns = ['البلدية', 'count']
+base = alt.Chart(mun_df).encode(x=alt.X('البلدية', axis=alt.Axis(labelAngle=0)), y='count')
+shadow = base.mark_bar(color='rgba(0,0,0,0.3)', xOffset=2, yOffset=-2)
+bar = base.mark_bar(color='steelblue')
+st.altair_chart(shadow + bar, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Chart 3
 st.markdown('<div class="chart-item">', unsafe_allow_html=True)
 st.subheader("عدد المشاريع حسب حالة المشروع")
-st.bar_chart(filtered["حالة المشروع"].value_counts())
+status_df = filtered["حالة المشروع"].value_counts().reset_index()
+status_df.columns = ['حالة المشروع', 'count']
+base = alt.Chart(status_df).encode(x=alt.X('حالة المشروع', axis=alt.Axis(labelAngle=0)), y='count')
+shadow = base.mark_bar(color='rgba(0,0,0,0.3)', xOffset=2, yOffset=-2)
+bar = base.mark_bar(color='steelblue')
+st.altair_chart(shadow + bar, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
