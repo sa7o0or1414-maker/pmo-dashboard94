@@ -128,14 +128,14 @@ html, body, [class*="css"] {
 
 h1 {
     text-align: center;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 2.5rem;
     margin-bottom: 2rem;
-    color: #1d1d1f;
+    color: #347f7f !important;
 }
 @media (prefers-color-scheme: dark) {
     h1 {
-        color: #f5f5f7;
+        color: #347f7f !important;
     }
 }
 
@@ -870,27 +870,47 @@ if st.session_state.page == "chat":
 # ================= Home =================
 st.title("لوحة المعلومات")
 
-# ===== Top Buttons =====
+# ===== Horizontal Navigation Menu =====
 items = list(DATA_FILES.keys())
 items.remove("الافتراضي")
 
-r1 = st.columns(5)
-for name, col in zip(items[:5], r1):
-    with col:
-        st.markdown("<div class='topbar-btn'>", unsafe_allow_html=True)
-        if st.button(name):
-            st.session_state.top_nav = name
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+icons = {
+    "مشاريع الباب الثالث": "🏗️",
+    "مشاريع الباب الرابع": "🏢",
+    "مشاريع بهجة": "🌟",
+    "تطبيق دليل PMD": "📋",
+    "المشاريع المنجزة": "✅",
+    "مشاريع المحفظة": "📁",
+    "الدراسات وقوائم التحقق": "📝",
+    "دورة المشتريات": "🛒",
+    "مواقع المشاريع": "📍",
+    "مشاريع الإسكان": "🏠"
+}
 
-r2 = st.columns(5)
-for name, col in zip(items[5:], r2):
-    with col:
-        st.markdown("<div class='topbar-btn'>", unsafe_allow_html=True)
-        if st.button(name):
+st.markdown('<div style="background: #153e46; padding: 2px 0; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;">', unsafe_allow_html=True)
+cols = st.columns(len(items))
+for i, name in enumerate(items):
+    with cols[i]:
+        if st.button(name, key=f"nav_{name}"):
             st.session_state.top_nav = name
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+.stButton button {
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+    line-height: 1.2 !important;
+    border-color: #347f7f !important;
+    border-width: 3px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+    height: 40px !important;
+    min-width: 120px !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.caption(f"📊 التحليل الحالي: {st.session_state.top_nav}")
 
@@ -976,6 +996,8 @@ if st.session_state.top_nav == "مشاريع بهجة":
     st.altair_chart(shadow + bar, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    st.markdown('<hr style="border: none; height: 2px; background: linear-gradient(to right, #153e46, #347f7f, #153e46); margin: 20px 0;">', unsafe_allow_html=True)
+
     # Chart 2
     st.markdown('<div class="chart-item">', unsafe_allow_html=True)
     st.subheader("المستهدف")
@@ -988,6 +1010,8 @@ if st.session_state.top_nav == "مشاريع بهجة":
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<hr style="border: none; height: 2px; background: linear-gradient(to right, #153e46, #347f7f, #153e46); margin: 20px 0;">', unsafe_allow_html=True)
 
     st.subheader("تفاصيل مشاريع بهجة")
     st.dataframe(filtered, use_container_width=True)
@@ -1148,6 +1172,8 @@ if st.session_state.top_nav == "المشاريع المنجزة":
     bar = base.mark_bar(color='steelblue')
     st.altair_chart(shadow + bar, use_container_width=True)
 
+    st.markdown('<hr style="border: none; height: 2px; background: linear-gradient(to right, #153e46, #347f7f, #153e46); margin: 20px 0;">', unsafe_allow_html=True)
+
     st.subheader("تفاصيل المشاريع المنجزة")
     st.dataframe(filtered, use_container_width=True)
 
@@ -1271,6 +1297,8 @@ text = base.mark_text(align='left', dx=5, color='black').encode(text='عدد')
 st.altair_chart((shadow + bar + text), use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
+st.markdown('<hr style="border: none; height: 2px; background: linear-gradient(to right, #153e46, #347f7f, #153e46); margin: 20px 0;">', unsafe_allow_html=True)
+
 # Chart 2
 st.markdown('<div class="chart-item">', unsafe_allow_html=True)
 st.subheader("عدد المشاريع حسب البلدية")
@@ -1281,6 +1309,8 @@ shadow = base.mark_bar(color='rgba(0,0,0,0.3)', xOffset=2, yOffset=-2)
 bar = base.mark_bar(color='steelblue')
 st.altair_chart(shadow + bar, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<hr style="border: none; height: 2px; background: linear-gradient(to right, #153e46, #347f7f, #153e46); margin: 20px 0;">', unsafe_allow_html=True)
 
 # Chart 3
 st.markdown('<div class="chart-item">', unsafe_allow_html=True)
@@ -1294,6 +1324,8 @@ st.altair_chart(shadow + bar, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<hr style="border: none; height: 2px; background: linear-gradient(to right, #153e46, #347f7f, #153e46); margin: 20px 0;">', unsafe_allow_html=True)
 
 # ================= التنبيهات =================
 st.subheader("تنبيهات المشاريع")
